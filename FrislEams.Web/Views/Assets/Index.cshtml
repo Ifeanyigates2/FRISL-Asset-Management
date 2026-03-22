@@ -1,0 +1,59 @@
+@model List<Asset>
+
+<div class="flex-between">
+    <h1>Assets</h1>
+    <a class="btn" asp-action="Register">Register Asset</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Tag</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Condition</th>
+            <th>Location</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.TagCode</td>
+            <td>@item.AssetName</td>
+            <td>@item.AssetCategory?.Name</td>
+            <td>@item.CurrentStatus</td>
+            <td>@item.CurrentCondition</td>
+            <td>@item.CurrentLocation?.Name</td>
+            <td>
+                <a asp-action="History" asp-route-id="@item.Id">History</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<h2>Quick Status Change</h2>
+<form asp-action="ChangeStatus" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>Asset</label>
+    <select name="AssetId">
+        @foreach (var item in Model)
+        {
+            <option value="@item.Id">@item.TagCode - @item.AssetName</option>
+        }
+    </select>
+
+    <label>Next Status</label>
+    <select name="NextStatus" asp-items="Html.GetEnumSelectList<FrislEams.Web.Domain.AssetStatus>()"></select>
+
+    <label>Reason</label>
+    <input name="Reason" required />
+
+    <label>Changed By</label>
+    <input name="ChangedBy" value="Admin" />
+
+    <button class="btn" type="submit">Apply Transition</button>
+</form>

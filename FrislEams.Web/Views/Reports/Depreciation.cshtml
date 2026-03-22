@@ -1,0 +1,29 @@
+@model List<DepreciationRowVm>
+
+<div class="flex-between">
+    <h1>Depreciation Report</h1>
+    <a class="btn" asp-action="ExportDepreciationCsv">Export CSV</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Tag</th><th>Name</th><th>Category</th><th>Purchase Cost</th><th>Useful Life</th><th>Annual Dep.</th><th>Accumulated Dep.</th><th>Net Book Value</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var row in Model)
+    {
+        <tr>
+            <td>@row.TagCode</td>
+            <td>@row.AssetName</td>
+            <td>@row.Category</td>
+            <td>@row.PurchaseCost.ToString("N2")</td>
+            <td>@row.UsefulLifeYears</td>
+            <td>@row.AnnualDepreciation.ToString("N2")</td>
+            <td>@row.AccumulatedDepreciation.ToString("N2")</td>
+            <td>@row.NetBookValue.ToString("N2")</td>
+        </tr>
+    }
+    </tbody>
+</table>

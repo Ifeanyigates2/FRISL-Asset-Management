@@ -1,0 +1,57 @@
+@model AssignmentInitiateVm
+@{
+    var assets = ViewBag.Assets as List<Asset> ?? new();
+    var staff = ViewBag.Staff as List<Staff> ?? new();
+    var departments = ViewBag.Departments as List<Department> ?? new();
+    var locations = ViewBag.Locations as List<Location> ?? new();
+}
+
+<h1>Initiate Assignment</h1>
+
+<form asp-action="Create" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>Asset</label>
+    <select asp-for="AssetId">
+        @foreach (var a in assets)
+        {
+            <option value="@a.Id">@a.TagCode - @a.AssetName</option>
+        }
+    </select>
+
+    <label>Assign To Staff (Optional)</label>
+    <select asp-for="AssignedToStaffId">
+        <option value="">-- Optional --</option>
+        @foreach (var s in staff)
+        {
+            <option value="@s.Id">@s.FullName</option>
+        }
+    </select>
+
+    <label>Assign To Department (Optional)</label>
+    <select asp-for="AssignedToDepartmentId">
+        <option value="">-- Optional --</option>
+        @foreach (var d in departments)
+        {
+            <option value="@d.Id">@d.Name</option>
+        }
+    </select>
+
+    <label>Assigned Location</label>
+    <select asp-for="AssignedLocationId">
+        @foreach (var l in locations)
+        {
+            <option value="@l.Id">@l.Name</option>
+        }
+    </select>
+
+    <label>Asset Condition</label>
+    <input asp-for="AssignedCondition" />
+
+    <label>Expected Return Date</label>
+    <input asp-for="ExpectedReturnDate" type="date" />
+
+    <label>Notes</label>
+    <textarea asp-for="Notes"></textarea>
+
+    <button class="btn" type="submit">Initiate</button>
+</form>

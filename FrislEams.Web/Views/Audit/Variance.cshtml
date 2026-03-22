@@ -1,0 +1,36 @@
+@model List<AuditResult>
+@{
+    var session = ViewBag.Session as AuditSession;
+    var variance = ViewBag.Variance as Dictionary<string, int> ?? new();
+}
+
+<h1>Audit Variance - Session @session?.Id</h1>
+<p>Type: @session?.AuditType | Department: @session?.Department?.Name | Status: @session?.Status</p>
+
+<div class="cards-grid">
+    @foreach (var item in variance)
+    {
+        <div class="metric-card">
+            <h3>@item.Key</h3>
+            <p>@item.Value</p>
+        </div>
+    }
+</div>
+
+<table>
+    <thead>
+        <tr><th>Asset</th><th>Seen Status</th><th>Condition</th><th>Notes</th><th>Date</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td>@r.Asset?.TagCode</td>
+            <td>@r.SeenStatus</td>
+            <td>@r.PhysicalCondition</td>
+            <td>@r.Notes</td>
+            <td>@r.CreatedAt.ToLocalTime()</td>
+        </tr>
+    }
+    </tbody>
+</table>

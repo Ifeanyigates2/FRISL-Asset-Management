@@ -1,0 +1,41 @@
+@model List<AssetAssignment>
+
+<div class="flex-between">
+    <h1>Assignments</h1>
+    <a class="btn" asp-action="Create">New Assignment</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Asset</th>
+            <th>Assigned To</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Confirm</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.Asset?.TagCode</td>
+            <td>@item.AssignedToStaff?.FullName</td>
+            <td>@item.Status</td>
+            <td>@item.AssignedDate.ToLocalTime()</td>
+            <td>
+                @if (item.Status == "Pending")
+                {
+                    <form asp-action="Confirm" method="post" class="inline-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="AssignmentId" value="@item.Id" />
+                        <input name="ConfirmedByStaffId" placeholder="Staff Id" required />
+                        <input name="ConfirmedCondition" placeholder="Condition" value="Good" required />
+                        <button class="btn" type="submit">Confirm</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

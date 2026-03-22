@@ -1,0 +1,85 @@
+@model List<Asset>
+@{
+    var departments = ViewBag.Departments as List<Department> ?? new();
+    var categories = ViewBag.Categories as List<AssetCategory> ?? new();
+    var categoryCounts = ViewBag.CategoryCounts as Dictionary<string, int> ?? new();
+    var filter = ViewBag.Filter as ReportFilterVm ?? new();
+}
+
+<h1>Reporting Engine</h1>
+<p><a class="btn" asp-action="Depreciation">View Depreciation Report</a></p>
+
+<form method="get" asp-action="Index" class="form-grid">
+    <label>From Date</label>
+    <input type="date" name="FromDate" value="@(filter.FromDate?.ToString("yyyy-MM-dd"))" />
+
+    <label>To Date</label>
+    <input type="date" name="ToDate" value="@(filter.ToDate?.ToString("yyyy-MM-dd"))" />
+
+    <label>Department</label>
+    <select name="DepartmentId">
+        <option value="">All</option>
+        @foreach (var d in departments)
+        {
+            <option value="@d.Id">@d.Name</option>
+        }
+    </select>
+
+    <label>Category</label>
+    <select name="CategoryId">
+        <option value="">All</option>
+        @foreach (var c in categories)
+        {
+            <option value="@c.Id">@c.Name</option>
+        }
+    </select>
+
+    <label>Status</label>
+    <input name="Status" value="@filter.Status" placeholder="e.g. ActiveAssigned" />
+
+    <button class="btn" type="submit">Run Report</button>
+</form>
+
+<p>
+    <a class="btn" asp-action="ExportCsv"
+       asp-route-FromDate="@filter.FromDate"
+       asp-route-ToDate="@filter.ToDate"
+       asp-route-DepartmentId="@filter.DepartmentId"
+       asp-route-CategoryId="@filter.CategoryId"
+       asp-route-Status="@filter.Status">Export CSV</a>
+</p>
+
+<h2>Asset Count by Category</h2>
+<div class="cards-grid">
+    @foreach (var item in categoryCounts)
+    {
+        <div class="metric-card">
+            <h3>@item.Key</h3>
+            <p>@item.Value</p>
+        </div>
+    }
+</div>
+
+<h2>Assets</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Tag</th><th>Name</th><th>Category</th><th>Department</th><th>Location</th><th>Status</th><th>Purchase Date</th><th>Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var a in Model)
+    {
+        <tr>
+            <td>@a.TagCode</td>
+            <td>@a.AssetName</td>
+            <td>@a.AssetCategory?.Name</td>
+            <td>@a.CurrentDepartment?.Name</td>
+            <td>@a.CurrentLocation?.Name</td>
+            <td>@a.CurrentStatus</td>
+            <td>@a.PurchaseDate?.ToString("yyyy-MM-dd")</td>
+            <td>@a.PurchaseCost</td>
+        </tr>
+    }
+    </tbody>
+</table>

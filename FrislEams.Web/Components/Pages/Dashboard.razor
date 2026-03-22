@@ -1,0 +1,33 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@inject DashboardService DashboardService
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<h1>Admin Dashboard</h1>
+
+@if (_metrics.Count == 0)
+{
+    <p>Loading metrics...</p>
+}
+else
+{
+    <div class="cards-grid">
+        @foreach (var metric in _metrics)
+        {
+            <div class="metric-card">
+                <h3>@metric.Key</h3>
+                <p>@metric.Value</p>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private Dictionary<string, int> _metrics = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _metrics = await DashboardService.GetAdminMetricsAsync();
+    }
+}

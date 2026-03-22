@@ -1,0 +1,38 @@
+@model List<RfidEvent>
+
+<h1>RFID Monitoring</h1>
+
+<form asp-action="RfidScan" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>RFID Code</label>
+    <input name="RfidCode" required />
+
+    <label>Door Location</label>
+    <input name="DoorLocation" value="Main Gate" required />
+
+    <button class="btn" type="submit">Submit Door Scan</button>
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>RFID</th>
+            <th>Event</th>
+            <th>Status</th>
+            <th>Alert</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var e in Model)
+    {
+        <tr>
+            <td>@e.EventTime.ToLocalTime()</td>
+            <td>@e.RfidCode</td>
+            <td>@e.EventType</td>
+            <td>@e.ProcessedStatus</td>
+            <td>@(e.AlertTriggered ? "Yes" : "No")</td>
+        </tr>
+    }
+    </tbody>
+</table>

@@ -1,0 +1,78 @@
+@model List<RepairRequest>
+@{
+    var assets = ViewBag.Assets as List<Asset> ?? new();
+    var staff = ViewBag.Staff as List<Staff> ?? new();
+}
+
+<h1>Repair / Replacement Workflow</h1>
+
+<form asp-action="RaiseRepair" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>Asset</label>
+    <select name="AssetId">
+        @foreach (var a in assets)
+        {
+            <option value="@a.Id">@a.TagCode - @a.AssetName</option>
+        }
+    </select>
+
+    <label>Reported By Staff</label>
+    <select name="ReportedByStaffId">
+        @foreach (var s in staff)
+        {
+            <option value="@s.Id">@s.FullName</option>
+        }
+    </select>
+
+    <label>Severity</label>
+    <select name="Severity">
+        <option>Low</option>
+        <option>Medium</option>
+        <option>High</option>
+        <option>Critical</option>
+    </select>
+
+    <label>Preferred Action</label>
+    <select name="PreferredAction">
+        <option>Repair</option>
+        <option>Replacement</option>
+        <option>Discard</option>
+    </select>
+
+    <label>Description</label>
+    <textarea name="Description" required></textarea>
+
+    <button class="btn" type="submit">Raise Request</button>
+</form>
+
+<table>
+    <thead>
+        <tr><th>Asset</th><th>Severity</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td>@r.Asset?.TagCode</td>
+            <td>@r.Severity</td>
+            <td>@r.Status</td>
+            <td>
+                @if (r.Status == "Pending Admin Review")
+                {
+                    <form asp-action="ApproveRepair" method="post" class="inline-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="RepairRequestId" value="@r.Id" />
+                        <select name="Action">
+                            <option>Repair</option>
+                            <option>Replacement</option>
+                            <option>Discard</option>
+                        </select>
+                        <input name="Reason" value="Admin approval" required />
+                        <button class="btn" type="submit">Approve</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

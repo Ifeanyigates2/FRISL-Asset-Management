@@ -1,0 +1,13 @@
+bin/
+obj/
+.dotnet/
+.vs/
+.DS_Store
+
+*.db
+*.db-shm
+*.db-wal
+
+FrislEams.Web/bin/
+FrislEams.Web/obj/
+FrislEams.Web/eams.db

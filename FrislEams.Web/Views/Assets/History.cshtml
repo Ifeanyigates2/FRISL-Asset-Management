@@ -1,0 +1,30 @@
+@model List<AssetStatusHistory>
+@{
+    var asset = ViewBag.Asset as Asset;
+}
+
+<h1>Status History - @asset?.TagCode</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Reason</th>
+            <th>Changed By</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.ChangedAt.ToLocalTime()</td>
+            <td>@item.PreviousStatus</td>
+            <td>@item.NewStatus</td>
+            <td>@item.Reason</td>
+            <td>@item.ChangedBy</td>
+        </tr>
+    }
+    </tbody>
+</table>

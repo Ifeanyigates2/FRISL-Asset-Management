@@ -1,0 +1,59 @@
+@model List<AssetRequest>
+@{
+    var staff = ViewBag.Staff as List<Staff> ?? new();
+    var assets = ViewBag.Assets as List<Asset> ?? new();
+}
+
+<h1>Asset Requests</h1>
+
+<form asp-action="CreateRequest" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>Request Type</label>
+    <select name="RequestType">
+        <option>New</option>
+        <option>Replacement</option>
+        <option>Loan</option>
+    </select>
+
+    <label>Requested By Staff</label>
+    <select name="RequestedByStaffId">
+        @foreach (var s in staff)
+        {
+            <option value="@s.Id">@s.FullName</option>
+        }
+    </select>
+
+    <label>Department Id</label>
+    <input name="DepartmentId" type="number" required />
+
+    <label>Asset (Optional)</label>
+    <select name="AssetId">
+        <option value="">-- Optional --</option>
+        @foreach (var a in assets)
+        {
+            <option value="@a.Id">@a.TagCode</option>
+        }
+    </select>
+
+    <label>Description</label>
+    <textarea name="Description" required></textarea>
+
+    <button class="btn" type="submit">Submit Request</button>
+</form>
+
+<table>
+    <thead>
+        <tr><th>Type</th><th>Status</th><th>Description</th><th>Date</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+        <tr>
+            <td>@r.RequestType</td>
+            <td>@r.Status</td>
+            <td>@r.Description</td>
+            <td>@r.CreatedAt.ToLocalTime()</td>
+        </tr>
+    }
+    </tbody>
+</table>

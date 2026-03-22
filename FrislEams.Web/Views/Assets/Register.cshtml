@@ -1,0 +1,86 @@
+@model AssetRegistrationVm
+@{
+    var categories = ViewBag.Categories as List<AssetCategory> ?? new();
+    var locations = ViewBag.Locations as List<Location> ?? new();
+    var departments = ViewBag.Departments as List<Department> ?? new();
+    var suppliers = ViewBag.Suppliers as List<Supplier> ?? new();
+}
+
+<h1>Register Asset</h1>
+
+<form asp-action="Register" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>Asset Name</label>
+    <input asp-for="AssetName" />
+    <span asp-validation-for="AssetName"></span>
+
+    <label>Description</label>
+    <textarea asp-for="Description"></textarea>
+
+    <label>Category</label>
+    <select asp-for="AssetCategoryId">
+        @foreach (var c in categories)
+        {
+            <option value="@c.Id">@c.Name</option>
+        }
+    </select>
+
+    <label>Purchase Date</label>
+    <input asp-for="PurchaseDate" type="date" />
+
+    <label>Purchase Cost</label>
+    <input asp-for="PurchaseCost" type="number" step="0.01" />
+
+    <label>GL Code</label>
+    <input asp-for="GlCode" />
+
+    <label>State of Purchase</label>
+    <select asp-for="StateOfPurchase">
+        <option>New</option>
+        <option>Used</option>
+    </select>
+
+    <label>Supplier</label>
+    <select asp-for="SupplierId">
+        <option value="">-- Optional --</option>
+        @foreach (var s in suppliers)
+        {
+            <option value="@s.Id">@s.Name</option>
+        }
+    </select>
+
+    <label>Serial Number</label>
+    <input asp-for="SerialNumber" />
+
+    <label>Warranty Expiry</label>
+    <input asp-for="WarrantyExpiryDate" type="date" />
+
+    <label>Expected Service Years</label>
+    <input asp-for="ExpectedServiceYears" type="number" />
+
+    <label>Condition</label>
+    <input asp-for="CurrentCondition" />
+
+    <label>Initial Location</label>
+    <select asp-for="InitialLocationId">
+        @foreach (var l in locations)
+        {
+            <option value="@l.Id">@l.Name</option>
+        }
+    </select>
+
+    <label>Initial Department</label>
+    <select asp-for="InitialDepartmentId">
+        <option value="">-- Optional --</option>
+        @foreach (var d in departments)
+        {
+            <option value="@d.Id">@d.Name</option>
+        }
+    </select>
+
+    <label>RFID Code</label>
+    <input asp-for="RfidCode" />
+    <span asp-validation-for="RfidCode"></span>
+
+    <button class="btn" type="submit">Register Asset</button>
+</form>

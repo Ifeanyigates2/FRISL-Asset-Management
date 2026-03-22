@@ -1,0 +1,76 @@
+@model List<LoanRequest>
+@{
+    var assets = ViewBag.Assets as List<Asset> ?? new();
+    var staff = ViewBag.Staff as List<Staff> ?? new();
+}
+
+<h1>Asset Loan Workflow</h1>
+
+<form asp-action="RaiseLoan" method="post" class="form-grid">
+    @Html.AntiForgeryToken()
+    <label>Asset</label>
+    <select name="AssetId">
+        @foreach (var a in assets)
+        {
+            <option value="@a.Id">@a.TagCode - @a.AssetName</option>
+        }
+    </select>
+
+    <label>Requested By Staff</label>
+    <select name="RequestedByStaffId">
+        @foreach (var s in staff)
+        {
+            <option value="@s.Id">@s.FullName</option>
+        }
+    </select>
+
+    <label>Loan Type</label>
+    <select name="LoanType">
+        <option>Internal</option>
+        <option>External</option>
+    </select>
+
+    <label>Start Date</label>
+    <input name="StartDate" type="date" required />
+
+    <label>Expected Return Date</label>
+    <input name="ExpectedReturnDate" type="date" required />
+
+    <label>Purpose</label>
+    <input name="Purpose" required />
+
+    <label>Destination</label>
+    <input name="Destination" required />
+
+    <label>Responsible Person</label>
+    <input name="ResponsiblePerson" required />
+
+    <button class="btn" type="submit">Raise Loan</button>
+</form>
+
+<table>
+    <thead>
+        <tr><th>Asset</th><th>Type</th><th>Status</th><th>Approval</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var l in Model)
+    {
+        <tr>
+            <td>@l.Asset?.TagCode</td>
+            <td>@l.LoanType</td>
+            <td>@l.Status</td>
+            <td>
+                @if (l.Status == "Pending")
+                {
+                    <form asp-action="ApproveLoan" method="post" class="inline-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="LoanRequestId" value="@l.Id" />
+                        <input name="ApprovedBy" value="Admin" required />
+                        <button class="btn" type="submit">Approve</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
