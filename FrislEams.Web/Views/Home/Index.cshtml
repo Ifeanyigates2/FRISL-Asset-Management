@@ -1,18 +1,75 @@
-<h1>FRISL Enterprise Asset Management</h1>
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Management Dashboard</h1>
+    </div>
+    <div class="flex-gap">
+        <a asp-controller="Assets" asp-action="Register" class="btn btn-primary">➕ Register Asset</a>
+        <a href="/dashboard" class="btn btn-outline">📊 Full Dashboard</a>
+    </div>
+</div>
 
 <div class="cards-grid">
     <div class="metric-card">
         <h3>Total Assets</h3>
         <p>@ViewBag.TotalAssets</p>
     </div>
-    <div class="metric-card">
-        <h3>Pending Assignment Confirmations</h3>
+    <div class="metric-card gold">
+        <h3>Pending Confirmations</h3>
         <p>@ViewBag.PendingAssignments</p>
     </div>
-    <div class="metric-card">
+    <div class="metric-card danger">
         <h3>RFID Exit Alerts</h3>
         <p>@ViewBag.Alerts</p>
     </div>
+    <div class="metric-card">
+        <h3>System Status</h3>
+        <p style="font-size:1.2rem;color:#0d5c38;">● Live</p>
+    </div>
 </div>
 
-<p class="mt">Use the navigation menu to register assets, run assignment workflows, process repairs/loans, and monitor RFID events.</p>
+<h2>Quick Actions</h2>
+<div class="quick-links">
+    <a asp-controller="Assets" asp-action="Index" class="quick-link-card">
+        <span class="icon">🏷️</span>
+        <span class="label">View Assets</span>
+    </a>
+    <a asp-controller="Assignments" asp-action="Index" class="quick-link-card">
+        <span class="icon">📋</span>
+        <span class="label">Assignments</span>
+    </a>
+    <a asp-controller="Workflow" asp-action="Requests" class="quick-link-card">
+        <span class="icon">📝</span>
+        <span class="label">Requests</span>
+    </a>
+    <a asp-controller="Workflow" asp-action="Repairs" class="quick-link-card">
+        <span class="icon">🔧</span>
+        <span class="label">Repairs</span>
+    </a>
+    <a asp-controller="Workflow" asp-action="Loans" class="quick-link-card">
+        <span class="icon">🔄</span>
+        <span class="label">Loans</span>
+    </a>
+    <a asp-controller="Workflow" asp-action="Rfid" class="quick-link-card">
+        <span class="icon">📡</span>
+        <span class="label">RFID Monitor</span>
+    </a>
+    <a asp-controller="Audit" asp-action="Index" class="quick-link-card">
+        <span class="icon">🔍</span>
+        <span class="label">Audit</span>
+    </a>
+    <a asp-controller="Reports" asp-action="Index" class="quick-link-card">
+        <span class="icon">📈</span>
+        <span class="label">Reports</span>
+    </a>
+</div>
+
+<div class="info-card" style="background: linear-gradient(135deg, #f7f9ff 0%, #eef2ff 100%); border-color: #c8d4f0; border-left: 4px solid var(--navy);">
+    <strong>Welcome to the FRISL Enterprise Asset Management System</strong>
+    <p class="text-muted" style="margin:0.5rem 0 0;">
+        This system enables you to register assets, manage assignments, process repairs and loans, monitor RFID events, conduct audits, and generate comprehensive reports — all in one place.
+    </p>
+</div>

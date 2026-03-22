@@ -1,0 +1,67 @@
+@{
+    Layout = "_LoginLayout";
+}
+
+<div class="signin-page">
+    <div class="signin-bg-pattern"></div>
+
+    <div class="signin-card" style="position:relative;z-index:1;">
+        <div class="signin-logo">
+            <img src="~/firstregistrars-logo.png" alt="First Registrars & Investor Services" />
+            <div class="signin-subtitle">Enterprise Asset Management System</div>
+        </div>
+
+        <div class="signin-gold-bar"></div>
+
+        <div class="signin-title">Sign In</div>
+        <div class="signin-desc">Enter your credentials to access the EAMS portal</div>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert error" style="margin-bottom:1rem;">⚠️ @ViewBag.Error</div>
+        }
+
+        <form method="post" action="/Account/Login?returnUrl=@ViewBag.ReturnUrl" class="signin-form">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username"
+                       autocomplete="username" autofocus required />
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password"
+                       autocomplete="current-password" required />
+            </div>
+            <button type="submit" class="signin-btn">Sign In →</button>
+        </form>
+
+        <div class="signin-demo-note">
+            <strong>🔑 Demo Credentials</strong>
+            Click a role below to auto-fill login details:
+            <div class="role-pills" style="margin-top:0.5rem;">
+                <button type="button" class="role-pill"
+                        onclick="document.getElementById('username').value='admin';document.getElementById('password').value='admin123'">
+                    Admin
+                </button>
+                <button type="button" class="role-pill"
+                        onclick="document.getElementById('username').value='auditor';document.getElementById('password').value='audit123'">
+                    Auditor
+                </button>
+                <button type="button" class="role-pill"
+                        onclick="document.getElementById('username').value='staff';document.getElementById('password').value='staff123'">
+                    Staff
+                </button>
+                <button type="button" class="role-pill"
+                        onclick="document.getElementById('username').value='viewer';document.getElementById('password').value='viewer123'">
+                    Viewer
+                </button>
+            </div>
+        </div>
+
+        <div class="signin-footer">
+            &copy; @DateTime.Now.Year First Registrars &amp; Investor Services Ltd.<br/>
+            All rights reserved. Authorised access only.
+        </div>
+    </div>
+</div>
