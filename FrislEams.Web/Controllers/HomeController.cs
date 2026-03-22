@@ -1,17 +1,14 @@
-using FrislEams.Web.Data;
+using FrislEams.Web.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace FrislEams.Web.Controllers;
 
-public class HomeController(AppDbContext db) : Controller
+public class HomeController(DashboardService dashboardService) : Controller
 {
     public async Task<IActionResult> Index()
     {
-        ViewBag.TotalAssets = await db.Assets.CountAsync();
-        ViewBag.PendingAssignments = await db.AssetAssignments.CountAsync(a => a.Status == "Pending");
-        ViewBag.Alerts = await db.RfidEvents.CountAsync(r => r.AlertTriggered);
-        return View();
+        var metrics = await dashboardService.GetAdminMetricsFullAsync();
+        return View(metrics);
     }
 
     public IActionResult Error()

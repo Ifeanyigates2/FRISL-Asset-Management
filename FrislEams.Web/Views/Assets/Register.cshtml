@@ -1,86 +1,161 @@
 @model AssetRegistrationVm
 @{
+    ViewData["Title"] = "Register Asset";
     var categories = ViewBag.Categories as List<AssetCategory> ?? new();
     var locations = ViewBag.Locations as List<Location> ?? new();
     var departments = ViewBag.Departments as List<Department> ?? new();
     var suppliers = ViewBag.Suppliers as List<Supplier> ?? new();
 }
 
-<h1>Register Asset</h1>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Register New Asset</h1>
+        <p class="page-subtitle">Complete all required fields to add a new asset to the EAMS register.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline">← Back to Assets</a>
+</div>
 
-<form asp-action="Register" method="post" class="form-grid">
+<form asp-action="Register" method="post" class="form-card">
     @Html.AntiForgeryToken()
-    <label>Asset Name</label>
-    <input asp-for="AssetName" />
-    <span asp-validation-for="AssetName"></span>
+    <div asp-validation-summary="ModelOnly" class="alert alert-error"></div>
 
-    <label>Description</label>
-    <textarea asp-for="Description"></textarea>
+    <!-- Section 1: Asset Identification -->
+    <div class="form-section">
+        <h3 class="form-section-title">Asset Identification</h3>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label asp-for="AssetName" class="form-label required">Asset Name</label>
+                <input asp-for="AssetName" class="form-control" placeholder="e.g. Dell Latitude 5530 Laptop" />
+                <span asp-validation-for="AssetName" class="field-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AssetCategoryId" class="form-label required">Category</label>
+                <select asp-for="AssetCategoryId" class="form-control">
+                    <option value="">-- Select Category --</option>
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name (Useful Life: @c.UsefulLifeYears yrs)</option>
+                    }
+                </select>
+                <span asp-validation-for="AssetCategoryId" class="field-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Brand" class="form-label">Brand / Manufacturer</label>
+                <input asp-for="Brand" class="form-control" placeholder="e.g. Dell, HP, Cisco" />
+            </div>
+            <div class="form-group">
+                <label asp-for="ModelNumber" class="form-label">Model Number</label>
+                <input asp-for="ModelNumber" class="form-control" placeholder="e.g. Latitude 5530" />
+            </div>
+            <div class="form-group">
+                <label asp-for="SerialNumber" class="form-label">Serial Number</label>
+                <input asp-for="SerialNumber" class="form-control" placeholder="Manufacturer serial number" />
+            </div>
+            <div class="form-group">
+                <label asp-for="RfidCode" class="form-label required">RFID Tag Code</label>
+                <input asp-for="RfidCode" class="form-control" placeholder="e.g. RFID-000123 (must be unique)" />
+                <span asp-validation-for="RfidCode" class="field-error"></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label asp-for="Description" class="form-label">Description / Specifications</label>
+            <textarea asp-for="Description" class="form-control" rows="3" placeholder="Detailed description, specifications, features..."></textarea>
+        </div>
+    </div>
 
-    <label>Category</label>
-    <select asp-for="AssetCategoryId">
-        @foreach (var c in categories)
-        {
-            <option value="@c.Id">@c.Name</option>
-        }
-    </select>
+    <!-- Section 2: Procurement Details -->
+    <div class="form-section">
+        <h3 class="form-section-title">Procurement &amp; Financial Details</h3>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label asp-for="PurchaseDate" class="form-label">Purchase Date</label>
+                <input asp-for="PurchaseDate" type="date" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label asp-for="PurchaseCost" class="form-label">Purchase Cost (₦)</label>
+                <input asp-for="PurchaseCost" type="number" step="0.01" min="0" class="form-control" placeholder="0.00" />
+            </div>
+            <div class="form-group">
+                <label asp-for="GlCode" class="form-label">GL Account Code</label>
+                <input asp-for="GlCode" class="form-control" placeholder="e.g. 5001" />
+            </div>
+            <div class="form-group">
+                <label asp-for="StateOfPurchase" class="form-label">State of Purchase</label>
+                <select asp-for="StateOfPurchase" class="form-control">
+                    <option value="New">New</option>
+                    <option value="Used">Used / Refurbished</option>
+                    <option value="Donated">Donated</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="SupplierId" class="form-label">Supplier / Vendor</label>
+                <select asp-for="SupplierId" class="form-control">
+                    <option value="">-- Select Supplier (Optional) --</option>
+                    @foreach (var s in suppliers)
+                    {
+                        <option value="@s.Id">@s.Name (@s.Code)</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExpectedServiceYears" class="form-label">Expected Service Life (Years)</label>
+                <input asp-for="ExpectedServiceYears" type="number" min="1" max="50" class="form-control" />
+            </div>
+        </div>
+    </div>
 
-    <label>Purchase Date</label>
-    <input asp-for="PurchaseDate" type="date" />
+    <!-- Section 3: Warranty & Condition -->
+    <div class="form-section">
+        <h3 class="form-section-title">Warranty &amp; Condition</h3>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label asp-for="WarrantyExpiryDate" class="form-label">Warranty Expiry Date</label>
+                <input asp-for="WarrantyExpiryDate" type="date" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label asp-for="CurrentCondition" class="form-label">Initial Condition</label>
+                <select asp-for="CurrentCondition" class="form-control">
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-    <label>Purchase Cost</label>
-    <input asp-for="PurchaseCost" type="number" step="0.01" />
+    <!-- Section 4: Initial Location -->
+    <div class="form-section">
+        <h3 class="form-section-title">Initial Placement</h3>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label asp-for="InitialLocationId" class="form-label required">Initial Location</label>
+                <select asp-for="InitialLocationId" class="form-control">
+                    <option value="">-- Select Location --</option>
+                    @foreach (var l in locations)
+                    {
+                        <option value="@l.Id">@l.Name (@l.Code)</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="InitialDepartmentId" class="form-label">Initial Department (Optional)</label>
+                <select asp-for="InitialDepartmentId" class="form-control">
+                    <option value="">-- Unassigned / Storage --</option>
+                    @foreach (var d in departments)
+                    {
+                        <option value="@d.Id">@d.Name (@d.Code)</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label asp-for="Notes" class="form-label">Additional Notes</label>
+            <textarea asp-for="Notes" class="form-control" rows="2" placeholder="Any additional notes about this asset..."></textarea>
+        </div>
+    </div>
 
-    <label>GL Code</label>
-    <input asp-for="GlCode" />
-
-    <label>State of Purchase</label>
-    <select asp-for="StateOfPurchase">
-        <option>New</option>
-        <option>Used</option>
-    </select>
-
-    <label>Supplier</label>
-    <select asp-for="SupplierId">
-        <option value="">-- Optional --</option>
-        @foreach (var s in suppliers)
-        {
-            <option value="@s.Id">@s.Name</option>
-        }
-    </select>
-
-    <label>Serial Number</label>
-    <input asp-for="SerialNumber" />
-
-    <label>Warranty Expiry</label>
-    <input asp-for="WarrantyExpiryDate" type="date" />
-
-    <label>Expected Service Years</label>
-    <input asp-for="ExpectedServiceYears" type="number" />
-
-    <label>Condition</label>
-    <input asp-for="CurrentCondition" />
-
-    <label>Initial Location</label>
-    <select asp-for="InitialLocationId">
-        @foreach (var l in locations)
-        {
-            <option value="@l.Id">@l.Name</option>
-        }
-    </select>
-
-    <label>Initial Department</label>
-    <select asp-for="InitialDepartmentId">
-        <option value="">-- Optional --</option>
-        @foreach (var d in departments)
-        {
-            <option value="@d.Id">@d.Name</option>
-        }
-    </select>
-
-    <label>RFID Code</label>
-    <input asp-for="RfidCode" />
-    <span asp-validation-for="RfidCode"></span>
-
-    <button class="btn" type="submit">Register Asset</button>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-lg">Register Asset</button>
+        <a asp-action="Index" class="btn btn-outline btn-lg">Cancel</a>
+    </div>
 </form>

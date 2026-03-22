@@ -1,85 +1,169 @@
 @model List<Asset>
+@using FrislEams.Web.Domain
 @{
+    ViewData["Title"] = "Asset Register Report";
     var departments = ViewBag.Departments as List<Department> ?? new();
     var categories = ViewBag.Categories as List<AssetCategory> ?? new();
     var categoryCounts = ViewBag.CategoryCounts as Dictionary<string, int> ?? new();
-    var filter = ViewBag.Filter as ReportFilterVm ?? new();
+    var filter = ViewBag.Filter;
+    decimal totalValue = Model.Sum(a => a.PurchaseCost ?? 0);
 }
 
-<h1>Reporting Engine</h1>
-<p><a class="btn" asp-action="Depreciation">View Depreciation Report</a></p>
-
-<form method="get" asp-action="Index" class="form-grid">
-    <label>From Date</label>
-    <input type="date" name="FromDate" value="@(filter.FromDate?.ToString("yyyy-MM-dd"))" />
-
-    <label>To Date</label>
-    <input type="date" name="ToDate" value="@(filter.ToDate?.ToString("yyyy-MM-dd"))" />
-
-    <label>Department</label>
-    <select name="DepartmentId">
-        <option value="">All</option>
-        @foreach (var d in departments)
-        {
-            <option value="@d.Id">@d.Name</option>
-        }
-    </select>
-
-    <label>Category</label>
-    <select name="CategoryId">
-        <option value="">All</option>
-        @foreach (var c in categories)
-        {
-            <option value="@c.Id">@c.Name</option>
-        }
-    </select>
-
-    <label>Status</label>
-    <input name="Status" value="@filter.Status" placeholder="e.g. ActiveAssigned" />
-
-    <button class="btn" type="submit">Run Report</button>
-</form>
-
-<p>
-    <a class="btn" asp-action="ExportCsv"
-       asp-route-FromDate="@filter.FromDate"
-       asp-route-ToDate="@filter.ToDate"
-       asp-route-DepartmentId="@filter.DepartmentId"
-       asp-route-CategoryId="@filter.CategoryId"
-       asp-route-Status="@filter.Status">Export CSV</a>
-</p>
-
-<h2>Asset Count by Category</h2>
-<div class="cards-grid">
-    @foreach (var item in categoryCounts)
-    {
-        <div class="metric-card">
-            <h3>@item.Key</h3>
-            <p>@item.Value</p>
-        </div>
-    }
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Register Report</h1>
+        <p class="page-subtitle">@Model.Count asset@(Model.Count != 1 ? "s" : "") — Total Value: ₦@totalValue.ToString("N0")</p>
+    </div>
+    <div class="flex-gap">
+        <a asp-action="Depreciation" class="btn btn-outline">Depreciation Report</a>
+        <a asp-action="Aging" class="btn btn-outline">Aging Report</a>
+        <a asp-action="ExportCsv"
+           asp-route-FromDate="@filter?.FromDate"
+           asp-route-ToDate="@filter?.ToDate"
+           asp-route-DepartmentId="@filter?.DepartmentId"
+           asp-route-CategoryId="@filter?.CategoryId"
+           asp-route-Status="@filter?.Status"
+           class="btn btn-primary">↓ Export CSV</a>
+    </div>
 </div>
 
-<h2>Assets</h2>
-<table>
-    <thead>
-        <tr>
-            <th>Tag</th><th>Name</th><th>Category</th><th>Department</th><th>Location</th><th>Status</th><th>Purchase Date</th><th>Cost</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var a in Model)
-    {
-        <tr>
-            <td>@a.TagCode</td>
-            <td>@a.AssetName</td>
-            <td>@a.AssetCategory?.Name</td>
-            <td>@a.CurrentDepartment?.Name</td>
-            <td>@a.CurrentLocation?.Name</td>
-            <td>@a.CurrentStatus</td>
-            <td>@a.PurchaseDate?.ToString("yyyy-MM-dd")</td>
-            <td>@a.PurchaseCost</td>
-        </tr>
-    }
-    </tbody>
-</table>
+<!-- Category Summary Bar -->
+@if (categoryCounts.Any())
+{
+    <div class="info-card" style="margin-bottom:1.5rem;">
+        <h3 class="info-card-title">Asset Count by Category</h3>
+        <div class="category-summary-row">
+            @{
+                var maxCat = categoryCounts.Values.Max();
+            }
+            @foreach (var kv in categoryCounts.OrderByDescending(x => x.Value))
+            {
+                <div class="category-chip">
+                    <span class="cat-name">@kv.Key</span>
+                    <span class="cat-count">@kv.Value</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Filters -->
+<div class="filter-bar" style="margin-bottom:1.5rem;">
+    <form method="get" asp-action="Index" class="filter-form">
+        <div class="filter-group">
+            <label class="filter-label">From Date</label>
+            <input type="date" name="FromDate" value="@filter?.FromDate?.ToString("yyyy-MM-dd")" class="filter-input" />
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">To Date</label>
+            <input type="date" name="ToDate" value="@filter?.ToDate?.ToString("yyyy-MM-dd")" class="filter-input" />
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Department</label>
+            <select name="DepartmentId" class="filter-select">
+                <option value="">All Departments</option>
+                @foreach (var d in departments)
+                {
+                    <option value="@d.Id" selected="@(filter?.DepartmentId?.ToString() == d.Id.ToString() ? "selected" : null)">@d.Name</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Category</label>
+            <select name="CategoryId" class="filter-select">
+                <option value="">All Categories</option>
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Id" selected="@(filter?.CategoryId?.ToString() == c.Id.ToString() ? "selected" : null)">@c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">Status</label>
+            <select name="Status" class="filter-select">
+                <option value="">All Statuses</option>
+                @foreach (var s in Enum.GetNames(typeof(AssetStatus)))
+                {
+                    <option value="@s" selected="@(filter?.Status == s ? "selected" : null)">@s</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Run Report</button>
+        <a href="?" class="btn btn-outline">Reset</a>
+    </form>
+</div>
+
+<!-- Report Table -->
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tag Code</th>
+                <th>Asset Name</th>
+                <th>Category</th>
+                <th>Brand / Model</th>
+                <th>Serial No.</th>
+                <th>Status</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Custodian</th>
+                <th>Purchase Date</th>
+                <th>Purchase Cost</th>
+                <th>Warranty</th>
+                <th>GL Code</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var a in Model)
+        {
+            var statusClass = a.CurrentStatus switch {
+                AssetStatus.ActiveAssigned => "badge-success",
+                AssetStatus.RegisteredUnassigned => "badge-info",
+                AssetStatus.UnderRepair => "badge-orange",
+                AssetStatus.Damaged => "badge-danger",
+                AssetStatus.LoanedOutExternal or AssetStatus.LoanedOutInternal => "badge-gold",
+                AssetStatus.Retired or AssetStatus.Sold or AssetStatus.Discarded => "badge-muted",
+                _ => "badge-default"
+            };
+            <tr>
+                <td class="monospace" style="font-size:0.82rem;white-space:nowrap;">
+                    <a asp-controller="Assets" asp-action="Detail" asp-route-id="@a.Id" class="tag-link">@a.TagCode</a>
+                </td>
+                <td>@a.AssetName</td>
+                <td>@a.AssetCategory?.Name</td>
+                <td style="font-size:0.82rem;">@(a.Brand) @(a.ModelNumber)</td>
+                <td class="monospace" style="font-size:0.78rem;">@(a.SerialNumber ?? "—")</td>
+                <td><span class="badge @statusClass" style="font-size:0.72rem;">@a.CurrentStatus</span></td>
+                <td>@a.CurrentDepartment?.Name</td>
+                <td>@a.CurrentLocation?.Name</td>
+                <td style="font-size:0.82rem;">@(a.CurrentCustodian?.FullName ?? "—")</td>
+                <td style="font-size:0.82rem;white-space:nowrap;">@(a.PurchaseDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                <td style="text-align:right;font-size:0.82rem;">@(a.PurchaseCost.HasValue ? "₦" + a.PurchaseCost.Value.ToString("N0") : "—")</td>
+                <td style="font-size:0.82rem;white-space:nowrap;">
+                    @if (a.WarrantyExpiryDate.HasValue)
+                    {
+                        var exp = a.WarrantyExpiryDate.Value < DateTime.UtcNow;
+                        <span class="@(exp ? "text-danger" : "")">@a.WarrantyExpiryDate.Value.ToString("dd MMM yyyy")</span>
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td class="monospace" style="font-size:0.78rem;">@(a.GlCode ?? "—")</td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="13" class="empty-state">No assets found matching your filters.</td></tr>
+        }
+        </tbody>
+        @if (Model.Any())
+        {
+            <tfoot>
+                <tr style="font-weight:600;background:#f0f4ff;">
+                    <td colspan="10" style="text-align:right;padding-right:1rem;">Total Portfolio Value:</td>
+                    <td style="text-align:right;">₦@totalValue.ToString("N0")</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+</div>

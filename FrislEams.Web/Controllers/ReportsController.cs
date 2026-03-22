@@ -14,10 +14,10 @@ public class ReportsController(AppDbContext db, ReportingService reportingServic
     {
         ViewBag.Departments = await db.Departments.ToListAsync();
         ViewBag.Categories = await db.AssetCategories.ToListAsync();
-        ViewBag.CategoryCounts = await reportingService.GetAssetCountByCategoryAsync();
-
-        var report = await reportingService.GetAssetsReportAsync(filter);
         ViewBag.Filter = filter;
+        var report = await reportingService.GetAssetsReportAsync(filter);
+        ViewBag.TotalValue = report.Where(a => a.PurchaseCost.HasValue).Sum(a => a.PurchaseCost!.Value);
+        ViewBag.TotalCount = report.Count;
         return View(report);
     }
 
@@ -33,6 +33,9 @@ public class ReportsController(AppDbContext db, ReportingService reportingServic
     public async Task<IActionResult> Depreciation()
     {
         var report = await reportingService.GetDepreciationReportAsync();
+        ViewBag.TotalCost = report.Sum(r => r.PurchaseCost);
+        ViewBag.TotalNbv = report.Sum(r => r.NetBookValue);
+        ViewBag.TotalAccumulated = report.Sum(r => r.AccumulatedDepreciation);
         return View(report);
     }
 
@@ -42,5 +45,22 @@ public class ReportsController(AppDbContext db, ReportingService reportingServic
         var report = await reportingService.GetDepreciationReportAsync();
         var csv = reportingService.BuildDepreciationCsv(report);
         return File(Encoding.UTF8.GetBytes(csv), "text/csv", $"depreciation-report-{DateTime.UtcNow:yyyyMMdd}.csv");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Aging()
+    {
+        var report = await reportingService.GetAgingReportAsync();
+        ViewBag.BandSummary = report.GroupBy(r => r.AgeBand).ToDictionary(g => g.Key, g => g.Count());
+        ViewBag.WarrantyExpired = report.Count(r => r.WarrantyExpired);
+        return View(report);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExportAgingCsv()
+    {
+        var report = await reportingService.GetAgingReportAsync();
+        var csv = reportingService.BuildAgingCsv(report);
+        return File(Encoding.UTF8.GetBytes(csv), "text/csv", $"asset-aging-{DateTime.UtcNow:yyyyMMdd}.csv");
     }
 }

@@ -1,0 +1,195 @@
+@model Asset
+@using FrislEams.Web.Domain
+@{
+    ViewData["Title"] = Model.AssetName;
+    var history = ViewBag.History as List<AssetStatusHistory> ?? new();
+    var assignments = ViewBag.Assignments as List<AssetAssignment> ?? new();
+    var rfidTag = ViewBag.RfidTag as RfidTag;
+    var repairs = ViewBag.RepairRequests as List<RepairRequest> ?? new();
+    bool warrantyExpired = Model.WarrantyExpiryDate.HasValue && Model.WarrantyExpiryDate.Value < DateTime.UtcNow;
+    var statusClass = Model.CurrentStatus switch {
+        AssetStatus.ActiveAssigned => "badge-success",
+        AssetStatus.RegisteredUnassigned => "badge-info",
+        AssetStatus.AssignedPendingConfirmation => "badge-warning",
+        AssetStatus.UnderRepair => "badge-orange",
+        AssetStatus.Damaged => "badge-danger",
+        AssetStatus.LoanedOutExternal or AssetStatus.LoanedOutInternal => "badge-gold",
+        _ => "badge-default"
+    };
+}
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>@Model.AssetName</h1>
+        <p class="page-subtitle">
+            <span class="tag-code">@Model.TagCode</span>
+            &nbsp;&nbsp;
+            <span class="badge @statusClass">@Model.CurrentStatus</span>
+        </p>
+    </div>
+    <div class="flex-gap">
+        <a asp-action="Index" class="btn btn-outline">← All Assets</a>
+        @if (Model.CurrentStatus == AssetStatus.RegisteredUnassigned || Model.CurrentStatus == AssetStatus.RecalledToStorage)
+        {
+            <a asp-controller="Assignments" asp-action="Create" asp-route-assetId="@Model.Id" class="btn btn-primary">Assign Asset</a>
+        }
+        @if (Model.CurrentStatus == AssetStatus.ActiveAssigned)
+        {
+            <a asp-controller="Workflow" asp-action="Repairs" class="btn btn-warning">Raise Repair</a>
+        }
+    </div>
+</div>
+
+<div class="detail-grid">
+    <!-- Left column: Asset details -->
+    <div class="detail-main">
+        <!-- Identification -->
+        <div class="info-card">
+            <h3 class="info-card-title">Asset Identification</h3>
+            <div class="detail-pairs">
+                <div class="detail-pair"><span class="dp-label">Tag Code</span><span class="dp-value monospace">@Model.TagCode</span></div>
+                <div class="detail-pair"><span class="dp-label">RFID Tag</span><span class="dp-value monospace">@(rfidTag?.RfidCode ?? "Not registered")</span></div>
+                <div class="detail-pair"><span class="dp-label">Asset Name</span><span class="dp-value">@Model.AssetName</span></div>
+                <div class="detail-pair"><span class="dp-label">Category</span><span class="dp-value">@Model.AssetCategory?.Name</span></div>
+                <div class="detail-pair"><span class="dp-label">Brand</span><span class="dp-value">@(Model.Brand ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Model Number</span><span class="dp-value">@(Model.ModelNumber ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Serial Number</span><span class="dp-value monospace">@(Model.SerialNumber ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Description</span><span class="dp-value">@(Model.Description.Length > 0 ? Model.Description : "—")</span></div>
+            </div>
+        </div>
+
+        <!-- Financial Details -->
+        <div class="info-card">
+            <h3 class="info-card-title">Procurement &amp; Financial</h3>
+            <div class="detail-pairs">
+                <div class="detail-pair"><span class="dp-label">Purchase Date</span><span class="dp-value">@(Model.PurchaseDate?.ToString("dd MMM yyyy") ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Purchase Cost</span><span class="dp-value">@(Model.PurchaseCost.HasValue ? "₦" + Model.PurchaseCost.Value.ToString("N0") : "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">GL Account Code</span><span class="dp-value">@(Model.GlCode ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">State of Purchase</span><span class="dp-value">@Model.StateOfPurchase</span></div>
+                <div class="detail-pair"><span class="dp-label">Supplier</span><span class="dp-value">@(Model.Supplier?.Name ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Expected Service Life</span><span class="dp-value">@(Model.ExpectedServiceYears.HasValue ? Model.ExpectedServiceYears + " years" : "—")</span></div>
+                <div class="detail-pair">
+                    <span class="dp-label">Warranty Expiry</span>
+                    <span class="dp-value @(warrantyExpired ? "text-danger" : "")">
+                        @(Model.WarrantyExpiryDate?.ToString("dd MMM yyyy") ?? "—")
+                        @if (warrantyExpired) { <span class="badge badge-danger" style="font-size:0.7rem;">Expired</span> }
+                        else if (Model.WarrantyExpiryDate.HasValue && Model.WarrantyExpiryDate.Value <= DateTime.UtcNow.AddMonths(3)) { <span class="badge badge-warning" style="font-size:0.7rem;">Expiring Soon</span> }
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <div class="info-card">
+            <h3 class="info-card-title">Current Status &amp; Location</h3>
+            <div class="detail-pairs">
+                <div class="detail-pair"><span class="dp-label">Status</span><span class="dp-value"><span class="badge @statusClass">@Model.CurrentStatus</span></span></div>
+                <div class="detail-pair"><span class="dp-label">Condition</span><span class="dp-value">@Model.CurrentCondition</span></div>
+                <div class="detail-pair"><span class="dp-label">Location</span><span class="dp-value">@(Model.CurrentLocation?.Name ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Department</span><span class="dp-value">@(Model.CurrentDepartment?.Name ?? "Unassigned")</span></div>
+                <div class="detail-pair"><span class="dp-label">Custodian</span><span class="dp-value">@(Model.CurrentCustodian?.FullName ?? "—")</span></div>
+                <div class="detail-pair"><span class="dp-label">Registered On</span><span class="dp-value">@Model.CreatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
+                <div class="detail-pair"><span class="dp-label">Last Updated</span><span class="dp-value">@Model.UpdatedAt.ToString("dd MMM yyyy, HH:mm")</span></div>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <div style="margin-top:0.75rem;padding:0.75rem;background:#f8f9fa;border-radius:6px;font-size:0.9rem;color:#555;">
+                    <strong>Notes:</strong> @Model.Notes
+                </div>
+            }
+        </div>
+
+        <!-- Quick Status Change -->
+        <div class="info-card">
+            <h3 class="info-card-title">Manual Status Transition</h3>
+            <form asp-controller="Assets" asp-action="ChangeStatus" method="post" class="inline-form-flex">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AssetId" value="@Model.Id" />
+                <select name="NextStatus" class="form-control" style="width:auto;min-width:200px;">
+                    @foreach (var s in Enum.GetValues<AssetStatus>())
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </select>
+                <input name="Reason" class="form-control" placeholder="Reason for status change (required)" required style="flex:1;" />
+                <input name="ChangedBy" value="@(Context.Session.GetString("UserName") ?? "Admin")" type="hidden" />
+                <button type="submit" class="btn btn-warning">Apply</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right column: History, Assignments, Repairs -->
+    <div class="detail-side">
+        <!-- Status History -->
+        <div class="info-card">
+            <div class="info-card-header">
+                <h3>Status History</h3>
+                <span class="badge badge-info">@history.Count events</span>
+            </div>
+            <div class="timeline">
+                @foreach (var h in history.Take(8))
+                {
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-body">
+                            <div style="font-size:0.8rem;color:#888;">@h.ChangedAt.ToString("dd MMM yyyy, HH:mm")</div>
+                            <div style="font-weight:600;font-size:0.88rem;color:#1d3461;">@h.PreviousStatus → @h.NewStatus</div>
+                            <div style="font-size:0.82rem;color:#555;">@h.Reason</div>
+                            <div style="font-size:0.78rem;color:#888;">By: @h.ChangedBy</div>
+                        </div>
+                    </div>
+                }
+                @if (history.Count > 8)
+                {
+                    <a asp-action="History" asp-route-id="@Model.Id" style="font-size:0.82rem;">View all @history.Count events →</a>
+                }
+            </div>
+        </div>
+
+        <!-- Assignments -->
+        @if (assignments.Any())
+        {
+            <div class="info-card">
+                <div class="info-card-header">
+                    <h3>Assignment History</h3>
+                    <span class="badge badge-info">@assignments.Count</span>
+                </div>
+                @foreach (var a in assignments.Take(5))
+                {
+                    <div class="mini-record @(a.Status == "Pending" ? "mini-record-warning" : "")">
+                        <div style="font-weight:600;font-size:0.85rem;">@(a.AssignedToStaff?.FullName ?? "Department Assignment")</div>
+                        <div style="font-size:0.78rem;color:#888;">@a.AssignedDate.ToString("dd MMM yyyy") · <span class="badge @(a.Status == "Confirmed" ? "badge-success" : "badge-warning")" style="font-size:0.7rem;">@a.Status</span></div>
+                        <div style="font-size:0.78rem;color:#555;">@(a.AssignedLocation?.Name) · @a.AssignedCondition condition</div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Repair History -->
+        @if (repairs.Any())
+        {
+            <div class="info-card">
+                <div class="info-card-header">
+                    <h3>Repair History</h3>
+                    <span class="badge badge-info">@repairs.Count</span>
+                </div>
+                @foreach (var r in repairs.Take(3))
+                {
+                    <div class="mini-record">
+                        <div style="font-weight:600;font-size:0.85rem;">@r.Severity Severity — @r.PreferredAction</div>
+                        <div style="font-size:0.78rem;color:#888;">@r.CreatedAt.ToString("dd MMM yyyy") · <span class="badge badge-info" style="font-size:0.7rem;">@r.Status</span></div>
+                        <div style="font-size:0.78rem;color:#555;margin-top:0.25rem;">@r.Description</div>
+                        @if (r.AssignedContractor != null)
+                        {
+                            <div style="font-size:0.78rem;color:#555;">Contractor: @r.AssignedContractor.Name</div>
+                        }
+                        @if (r.RepairCost.HasValue)
+                        {
+                            <div style="font-size:0.78rem;color:#555;">Cost: ₦@r.RepairCost.Value.ToString("N0")</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

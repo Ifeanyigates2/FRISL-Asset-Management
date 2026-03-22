@@ -1,0 +1,95 @@
+@model List<RepairContractor>
+@{
+    ViewData["Title"] = "Contractors";
+}
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>Repair Contractors</h1>
+        <p class="page-subtitle">@Model.Count registered contractor@(Model.Count != 1 ? "s" : "") in the system</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">+ Add Contractor</a>
+</div>
+
+<!-- Stats -->
+<div class="cards-grid cards-grid-3" style="margin-bottom:1.5rem;">
+    <div class="metric-card">
+        <div class="metric-label">Total Contractors</div>
+        <div class="metric-value">@Model.Count</div>
+        <div class="metric-sub">all registered contractors</div>
+    </div>
+    <div class="metric-card success">
+        <div class="metric-label">Active</div>
+        <div class="metric-value">@Model.Count(c => c.IsActive)</div>
+        <div class="metric-sub">available for assignment</div>
+    </div>
+    <div class="metric-card navy">
+        <div class="metric-label">Inactive</div>
+        <div class="metric-value">@Model.Count(c => !c.IsActive)</div>
+        <div class="metric-sub">deactivated contractors</div>
+    </div>
+</div>
+
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Company Name</th>
+                <th>Code</th>
+                <th>Specialisation</th>
+                <th>Contact Person</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>SLA</th>
+                <th>Status</th>
+                <th>Registered</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in Model)
+        {
+            <tr>
+                <td><strong>@c.Name</strong></td>
+                <td class="monospace" style="font-size:0.82rem;">@c.Code</td>
+                <td>
+                    <span class="badge badge-info" style="font-size:0.75rem;">@c.Specialisation</span>
+                </td>
+                <td>@(c.ContactPerson ?? "—")</td>
+                <td style="font-size:0.82rem;">@(c.Phone ?? "—")</td>
+                <td style="font-size:0.82rem;">
+                    @if (!string.IsNullOrEmpty(c.Email))
+                    {
+                        <a href="mailto:@c.Email">@c.Email</a>
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td style="font-size:0.82rem;">@c.SlaHours hrs</td>
+                <td>
+                    <span class="badge @(c.IsActive ? "badge-success" : "badge-muted")">
+                        @(c.IsActive ? "Active" : "Inactive")
+                    </span>
+                </td>
+                <td style="font-size:0.82rem;white-space:nowrap;">@c.RegisteredAt.ToString("dd MMM yyyy")</td>
+                <td>
+                    <div class="action-links">
+                        <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-xs btn-outline">Edit</a>
+                        <form asp-action="ToggleActive" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@c.Id" />
+                            <button type="submit" class="btn btn-xs @(c.IsActive ? "btn-danger" : "btn-success")"
+                                    onclick="return confirm('@(c.IsActive ? "Deactivate" : "Activate") @c.Name?')">
+                                @(c.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="10" class="empty-state">No contractors registered yet. Click "+ Add Contractor" to begin.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

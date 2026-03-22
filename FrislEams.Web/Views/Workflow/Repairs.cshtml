@@ -1,78 +1,227 @@
 @model List<RepairRequest>
+@using FrislEams.Web.Domain
 @{
+    ViewData["Title"] = "Repairs & Replacement";
     var assets = ViewBag.Assets as List<Asset> ?? new();
     var staff = ViewBag.Staff as List<Staff> ?? new();
+    var contractors = ViewBag.Contractors as List<RepairContractor> ?? new();
+    var pending = Model.Where(r => r.Status == "Pending Admin Review").ToList();
+    var inProgress = Model.Where(r => r.Status.StartsWith("Approved")).ToList();
+    var completed = Model.Where(r => r.Status == "Completed").ToList();
 }
 
-<h1>Repair / Replacement Workflow</h1>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Repairs &amp; Replacement Workflow</h1>
+        <p class="page-subtitle">Manage asset fault reporting, admin approval, and contractor assignment</p>
+    </div>
+    <div class="flex-gap">
+        <span class="badge badge-danger">@pending.Count Pending</span>
+        <span class="badge badge-orange">@inProgress.Count In Progress</span>
+        <span class="badge badge-success">@completed.Count Completed</span>
+    </div>
+</div>
 
-<form asp-action="RaiseRepair" method="post" class="form-grid">
-    @Html.AntiForgeryToken()
-    <label>Asset</label>
-    <select name="AssetId">
-        @foreach (var a in assets)
-        {
-            <option value="@a.Id">@a.TagCode - @a.AssetName</option>
-        }
-    </select>
+<!-- Raise Repair Request -->
+<div class="collapsible-section" id="raiseRepairSection">
+    <div class="collapsible-header" onclick="toggleSection('raiseRepairBody')">
+        <h3>+ Report Fault / Raise Repair Request</h3>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="raiseRepairBody" style="display:none;">
+        <form asp-action="RaiseRepair" method="post" class="form-inline-grid">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label required">Asset</label>
+                <select name="AssetId" class="form-control" required>
+                    <option value="">-- Select Asset --</option>
+                    @foreach (var a in assets)
+                    {
+                        <option value="@a.Id">@a.TagCode — @a.AssetName (@a.CurrentDepartment?.Name ?? "Unassigned")</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Reported By</label>
+                <select name="ReportedByStaffId" class="form-control" required>
+                    <option value="">-- Staff Member --</option>
+                    @foreach (var s in staff)
+                    {
+                        <option value="@s.Id">@s.FullName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Severity</label>
+                <select name="Severity" class="form-control">
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                    <option>Critical</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Preferred Action</label>
+                <select name="PreferredAction" class="form-control">
+                    <option value="Repair">Repair</option>
+                    <option value="Replacement">Replacement</option>
+                    <option value="Discard">Discard</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label required">Fault Description</label>
+                <textarea name="Description" class="form-control" rows="3" required placeholder="Describe the fault or issue in detail..."></textarea>
+            </div>
+            <div style="grid-column:1/-1;">
+                <button type="submit" class="btn btn-warning">Submit Repair Request</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-    <label>Reported By Staff</label>
-    <select name="ReportedByStaffId">
-        @foreach (var s in staff)
-        {
-            <option value="@s.Id">@s.FullName</option>
-        }
-    </select>
-
-    <label>Severity</label>
-    <select name="Severity">
-        <option>Low</option>
-        <option>Medium</option>
-        <option>High</option>
-        <option>Critical</option>
-    </select>
-
-    <label>Preferred Action</label>
-    <select name="PreferredAction">
-        <option>Repair</option>
-        <option>Replacement</option>
-        <option>Discard</option>
-    </select>
-
-    <label>Description</label>
-    <textarea name="Description" required></textarea>
-
-    <button class="btn" type="submit">Raise Request</button>
-</form>
-
-<table>
-    <thead>
-        <tr><th>Asset</th><th>Severity</th><th>Status</th><th>Action</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var r in Model)
-    {
-        <tr>
-            <td>@r.Asset?.TagCode</td>
-            <td>@r.Severity</td>
-            <td>@r.Status</td>
-            <td>
-                @if (r.Status == "Pending Admin Review")
+<!-- Pending Requests -->
+@if (pending.Any())
+{
+    <div class="info-card" style="border-left:4px solid #dc3545;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#dc3545;">Pending Admin Review (@pending.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Asset</th><th>Reported By</th><th>Severity</th><th>Preferred Action</th><th>Description</th><th>Raised</th><th>Admin Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in pending)
                 {
-                    <form asp-action="ApproveRepair" method="post" class="inline-form">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="RepairRequestId" value="@r.Id" />
-                        <select name="Action">
-                            <option>Repair</option>
-                            <option>Replacement</option>
-                            <option>Discard</option>
-                        </select>
-                        <input name="Reason" value="Admin approval" required />
-                        <button class="btn" type="submit">Approve</button>
-                    </form>
+                    <tr>
+                        <td>@r.Id</td>
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@r.AssetId" class="tag-link">@r.Asset?.TagCode</a>
+                            <div style="font-size:0.78rem;color:#555;">@r.Asset?.AssetName</div>
+                        </td>
+                        <td>@r.ReportedByStaff?.FullName</td>
+                        <td>
+                            <span class="badge @(r.Severity == "Critical" || r.Severity == "High" ? "badge-danger" : r.Severity == "Medium" ? "badge-warning" : "badge-default")">
+                                @r.Severity
+                            </span>
+                        </td>
+                        <td>@r.PreferredAction</td>
+                        <td style="max-width:220px;font-size:0.83rem;">@r.Description</td>
+                        <td style="font-size:0.82rem;">@r.CreatedAt.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <form asp-action="ApproveRepair" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="RepairRequestId" value="@r.Id" />
+                                <select name="Action" class="form-control form-control-sm" style="min-width:110px;">
+                                    <option value="Repair">Repair</option>
+                                    <option value="Replacement">Replacement</option>
+                                    <option value="Discard">Discard</option>
+                                </select>
+                                <select name="ContractorId" class="form-control form-control-sm" style="min-width:150px;margin-top:4px;">
+                                    <option value="">No Contractor</option>
+                                    @foreach (var c in contractors)
+                                    {
+                                        <option value="@c.Id">@c.Name (@c.Specialisation)</option>
+                                    }
+                                </select>
+                                <input name="Reason" class="form-control form-control-sm" placeholder="Approval reason (required)" required style="margin-top:4px;" />
+                                <button type="submit" class="btn btn-primary btn-sm" style="margin-top:4px;">Approve</button>
+                            </form>
+                        </td>
+                    </tr>
                 }
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- In Progress -->
+@if (inProgress.Any())
+{
+    <div class="info-card" style="border-left:4px solid #fd7e14;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#fd7e14;">In Progress (@inProgress.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Asset</th><th>Approved Action</th><th>Contractor</th><th>Severity</th><th>Status</th><th>Mark Complete</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var r in inProgress)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@r.AssetId" class="tag-link">@r.Asset?.TagCode</a>
+                            <div style="font-size:0.78rem;color:#555;">@r.Asset?.AssetName</div>
+                        </td>
+                        <td>@r.ApprovedAction</td>
+                        <td>@(r.AssignedContractor?.Name ?? "—")</td>
+                        <td><span class="badge @(r.Severity == "High" || r.Severity == "Critical" ? "badge-danger" : "badge-warning")">@r.Severity</span></td>
+                        <td><span class="badge badge-orange">@r.Status</span></td>
+                        <td>
+                            @if (r.ApprovedAction == "Repair")
+                            {
+                                <form asp-action="CompleteRepair" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="repairId" value="@r.Id" />
+                                    <input name="notes" class="form-control form-control-sm" placeholder="Completion notes" />
+                                    <input name="cost" type="number" step="0.01" class="form-control form-control-sm" placeholder="Cost (₦)" style="margin-top:4px;" />
+                                    <button type="submit" class="btn btn-success btn-sm" style="margin-top:4px;">Mark Complete</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:0.8rem;">No completion for @r.ApprovedAction</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Completed -->
+@if (completed.Any())
+{
+    <div class="info-card" style="border-left:4px solid #198754;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#198754;">Completed (@completed.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Asset</th><th>Action</th><th>Contractor</th><th>Repair Cost</th><th>Completed</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var r in completed)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@r.AssetId" class="tag-link">@r.Asset?.TagCode</a>
+                            <div style="font-size:0.78rem;color:#555;">@r.Asset?.AssetName</div>
+                        </td>
+                        <td>@r.ApprovedAction</td>
+                        <td>@(r.AssignedContractor?.Name ?? "—")</td>
+                        <td>@(r.RepairCost.HasValue ? "₦" + r.RepairCost.Value.ToString("N0") : "—")</td>
+                        <td style="font-size:0.82rem;">@(r.CompletedAt?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td style="font-size:0.82rem;max-width:200px;">@(r.RepairNotes ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="empty-state-card">No repair requests on record.</div>
+}
+
+<script>
+function toggleSection(id) {
+    var el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>

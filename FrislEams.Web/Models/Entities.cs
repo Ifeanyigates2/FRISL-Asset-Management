@@ -29,8 +29,13 @@ public class Staff
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string StaffId { get; set; } = string.Empty;
+    public string Role { get; set; } = "Staff";
     public int DepartmentId { get; set; }
     public Department? Department { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class Supplier
@@ -38,6 +43,26 @@ public class Supplier
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
+    public string ContactPerson { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
+    public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
+}
+
+public class RepairContractor
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string ContactPerson { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Specialisation { get; set; } = string.Empty;
+    public string SlaHours { get; set; } = "48";
+    public bool IsActive { get; set; } = true;
+    public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
 }
 
 public class Asset
@@ -55,6 +80,8 @@ public class Asset
     public int? SupplierId { get; set; }
     public Supplier? Supplier { get; set; }
     public string? SerialNumber { get; set; }
+    public string? ModelNumber { get; set; }
+    public string? Brand { get; set; }
     public DateTime? WarrantyExpiryDate { get; set; }
     public int? ExpectedServiceYears { get; set; }
     public string CurrentCondition { get; set; } = "Good";
@@ -66,7 +93,9 @@ public class Asset
     public int? CurrentCustodianId { get; set; }
     public Staff? CurrentCustodian { get; set; }
     public string? InvoicePath { get; set; }
+    public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class RfidTag
@@ -99,6 +128,7 @@ public class AssetAssignment
     public Staff? ConfirmedByStaff { get; set; }
     public string Notes { get; set; } = string.Empty;
     public string Status { get; set; } = "Pending";
+    public string AssignedBy { get; set; } = "Admin";
 }
 
 public class AssetStatusHistory
@@ -129,7 +159,11 @@ public class AssetRequest
     public string Description { get; set; } = string.Empty;
     public string Status { get; set; } = "Pending Department Approval";
     public string? ApprovedByDepartmentHead { get; set; }
+    public DateTime? DeptHeadApprovedAt { get; set; }
     public string? ApprovedByAdmin { get; set; }
+    public DateTime? AdminApprovedAt { get; set; }
+    public string? RejectionReason { get; set; }
+    public int? FulfilledByAssetId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -145,6 +179,11 @@ public class RepairRequest
     public string PreferredAction { get; set; } = "Repair";
     public string Status { get; set; } = "Pending Admin Review";
     public string? ApprovedAction { get; set; }
+    public int? AssignedContractorId { get; set; }
+    public RepairContractor? AssignedContractor { get; set; }
+    public string? RepairNotes { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public decimal? RepairCost { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -164,6 +203,7 @@ public class LoanRequest
     public string ResponsiblePerson { get; set; } = string.Empty;
     public string Status { get; set; } = "Pending";
     public string? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
 }
 
 public class ExitGrant
@@ -177,6 +217,7 @@ public class ExitGrant
     public DateTime GrantStartDate { get; set; }
     public DateTime GrantEndDate { get; set; }
     public bool IsActive { get; set; } = true;
+    public string? ExitReason { get; set; }
 }
 
 public class RfidEvent
@@ -189,6 +230,7 @@ public class RfidEvent
     public string DoorLocation { get; set; } = string.Empty;
     public string ProcessedStatus { get; set; } = string.Empty;
     public bool AlertTriggered { get; set; }
+    public string? AlertMessage { get; set; }
     public DateTime EventTime { get; set; } = DateTime.UtcNow;
 }
 
@@ -200,8 +242,10 @@ public class AuditSession
     public Department? Department { get; set; }
     public string InitiatedBy { get; set; } = string.Empty;
     public string Status { get; set; } = "Open";
+    public string? Notes { get; set; }
     public DateTime StartDate { get; set; } = DateTime.UtcNow;
     public DateTime? EndDate { get; set; }
+    public List<AuditResult> Results { get; set; } = [];
 }
 
 public class AuditResult
@@ -214,6 +258,7 @@ public class AuditResult
     public string SeenStatus { get; set; } = string.Empty;
     public string? PhysicalCondition { get; set; }
     public string? Notes { get; set; }
+    public string? Variance { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
@@ -221,7 +266,11 @@ public class Notification
 {
     public int Id { get; set; }
     public string TargetRole { get; set; } = string.Empty;
+    public string? TargetUserId { get; set; }
+    public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string Type { get; set; } = "Info";
+    public string? LinkUrl { get; set; }
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

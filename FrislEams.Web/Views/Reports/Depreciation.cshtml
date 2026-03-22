@@ -1,29 +1,124 @@
 @model List<DepreciationRowVm>
+@{
+    ViewData["Title"] = "Depreciation Report";
+    decimal totalCost = Model.Sum(r => r.PurchaseCost);
+    decimal totalAccDep = Model.Sum(r => r.AccumulatedDepreciation);
+    decimal totalNbv = Model.Sum(r => r.NetBookValue);
+    decimal totalAnnualDep = Model.Sum(r => r.AnnualDepreciation);
+}
 
-<div class="flex-between">
-    <h1>Depreciation Report</h1>
-    <a class="btn" asp-action="ExportDepreciationCsv">Export CSV</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Depreciation Report</h1>
+        <p class="page-subtitle">Straight-line method — all depreciable assets</p>
+    </div>
+    <div class="flex-gap">
+        <a asp-action="Index" class="btn btn-outline">← Asset Register</a>
+        <a asp-action="ExportDepreciationCsv" class="btn btn-primary">↓ Export CSV</a>
+    </div>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Tag</th><th>Name</th><th>Category</th><th>Purchase Cost</th><th>Useful Life</th><th>Annual Dep.</th><th>Accumulated Dep.</th><th>Net Book Value</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var row in Model)
-    {
-        <tr>
-            <td>@row.TagCode</td>
-            <td>@row.AssetName</td>
-            <td>@row.Category</td>
-            <td>@row.PurchaseCost.ToString("N2")</td>
-            <td>@row.UsefulLifeYears</td>
-            <td>@row.AnnualDepreciation.ToString("N2")</td>
-            <td>@row.AccumulatedDepreciation.ToString("N2")</td>
-            <td>@row.NetBookValue.ToString("N2")</td>
-        </tr>
-    }
-    </tbody>
-</table>
+<!-- Summary Cards -->
+<div class="cards-grid cards-grid-4" style="margin-bottom:1.5rem;">
+    <div class="metric-card navy">
+        <div class="metric-label">Total Original Cost</div>
+        <div class="metric-value" style="font-size:1.5rem;">₦@((totalCost/1000000m).ToString("N1"))M</div>
+        <div class="metric-sub">@Model.Count depreciable assets</div>
+    </div>
+    <div class="metric-card warning">
+        <div class="metric-label">Total Annual Depreciation</div>
+        <div class="metric-value" style="font-size:1.5rem;">₦@((totalAnnualDep/1000000m).ToString("N1"))M</div>
+        <div class="metric-sub">annual charge across all assets</div>
+    </div>
+    <div class="metric-card danger">
+        <div class="metric-label">Accumulated Depreciation</div>
+        <div class="metric-value" style="font-size:1.5rem;">₦@((totalAccDep/1000000m).ToString("N1"))M</div>
+        <div class="metric-sub">total depreciation to date</div>
+    </div>
+    <div class="metric-card success">
+        <div class="metric-label">Net Book Value</div>
+        <div class="metric-value" style="font-size:1.5rem;">₦@((totalNbv/1000000m).ToString("N1"))M</div>
+        <div class="metric-sub">current carrying value</div>
+    </div>
+</div>
+
+<!-- Depreciation Progress -->
+@{
+    var depPercentage = totalCost > 0 ? (int)(totalAccDep * 100m / totalCost) : 0;
+}
+<div class="info-card" style="margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-weight:600;">Portfolio Depreciation Rate</span>
+        <span style="font-weight:700;color:@(depPercentage > 80 ? "#dc3545" : depPercentage > 50 ? "#e8a00e" : "#198754");">@depPercentage% depreciated</span>
+    </div>
+    <div style="height:18px;background:#e8edf5;border-radius:9px;overflow:hidden;">
+        <div style="height:100%;width:@depPercentage%;background:@(depPercentage > 80 ? "#dc3545" : depPercentage > 50 ? "#e8a00e" : "#198754");border-radius:9px;transition:width 0.5s;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:0.25rem;font-size:0.78rem;color:#888;">
+        <span>Accumulated: ₦@totalAccDep.ToString("N0")</span>
+        <span>NBV Remaining: ₦@totalNbv.ToString("N0")</span>
+    </div>
+</div>
+
+<!-- Detail Table -->
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tag Code</th>
+                <th>Asset Name</th>
+                <th>Category</th>
+                <th style="text-align:right;">Purchase Cost (₦)</th>
+                <th style="text-align:center;">Useful Life</th>
+                <th style="text-align:right;">Annual Dep. (₦)</th>
+                <th style="text-align:right;">Acc. Dep. (₦)</th>
+                <th style="text-align:right;">Net Book Value (₦)</th>
+                <th>Dep. %</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.OrderByDescending(r => r.PurchaseCost))
+        {
+            var pct = row.PurchaseCost > 0 ? (int)(row.AccumulatedDepreciation * 100m / row.PurchaseCost) : 0;
+            <tr>
+                <td class="monospace" style="font-size:0.82rem;">
+                    <a asp-controller="Assets" asp-action="Detail" asp-route-id="@row.AssetId" class="tag-link">@row.TagCode</a>
+                </td>
+                <td>@row.AssetName</td>
+                <td>@row.Category</td>
+                <td style="text-align:right;font-size:0.85rem;">@row.PurchaseCost.ToString("N0")</td>
+                <td style="text-align:center;font-size:0.85rem;">@row.UsefulLifeYears yrs</td>
+                <td style="text-align:right;font-size:0.85rem;">@row.AnnualDepreciation.ToString("N0")</td>
+                <td style="text-align:right;font-size:0.85rem;color:#dc3545;">@row.AccumulatedDepreciation.ToString("N0")</td>
+                <td style="text-align:right;font-size:0.85rem;font-weight:600;color:#1d3461;">@row.NetBookValue.ToString("N0")</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="flex:1;height:8px;background:#e8edf5;border-radius:4px;min-width:40px;">
+                            <div style="height:100%;width:@pct%;background:@(pct > 80 ? "#dc3545" : pct > 50 ? "#e8a00e" : "#198754");border-radius:4px;"></div>
+                        </div>
+                        <span style="font-size:0.75rem;color:#666;white-space:nowrap;">@pct%</span>
+                    </div>
+                </td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="9" class="empty-state">No depreciation data available.</td></tr>
+        }
+        </tbody>
+        @if (Model.Any())
+        {
+            <tfoot>
+                <tr style="font-weight:700;background:#f0f4ff;font-size:0.88rem;">
+                    <td colspan="3" style="text-align:right;">TOTAL:</td>
+                    <td style="text-align:right;">₦@totalCost.ToString("N0")</td>
+                    <td></td>
+                    <td style="text-align:right;">₦@totalAnnualDep.ToString("N0")</td>
+                    <td style="text-align:right;color:#dc3545;">₦@totalAccDep.ToString("N0")</td>
+                    <td style="text-align:right;color:#1d3461;">₦@totalNbv.ToString("N0")</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        }
+    </table>
+</div>

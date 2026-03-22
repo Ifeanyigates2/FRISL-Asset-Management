@@ -1,59 +1,143 @@
 @model List<Asset>
+@using FrislEams.Web.Domain
+@{
+    ViewData["Title"] = "Asset Register";
+    var categories = ViewBag.Categories as List<AssetCategory> ?? new();
+    var departments = ViewBag.Departments as List<Department> ?? new();
+    var filter = ViewBag.Filter;
+    int total = ViewBag.TotalCount ?? Model.Count;
+    decimal totalVal = ViewBag.TotalValue ?? 0m;
+}
 
-<div class="flex-between">
-    <h1>Assets</h1>
-    <a class="btn" asp-action="Register">Register Asset</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Register</h1>
+        <p class="page-subtitle">@total asset@(total != 1 ? "s" : "") found — Total Value: ₦@totalVal.ToString("N0")</p>
+    </div>
+    <div class="flex-gap">
+        <a asp-action="Register" class="btn btn-primary">+ Register Asset</a>
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-outline">Export Report</a>
+    </div>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Tag</th>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>Condition</th>
-            <th>Location</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var item in Model)
-    {
-        <tr>
-            <td>@item.TagCode</td>
-            <td>@item.AssetName</td>
-            <td>@item.AssetCategory?.Name</td>
-            <td>@item.CurrentStatus</td>
-            <td>@item.CurrentCondition</td>
-            <td>@item.CurrentLocation?.Name</td>
-            <td>
-                <a asp-action="History" asp-route-id="@item.Id">History</a>
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="get" asp-action="Index" class="filter-form">
+        <input name="q" value="@filter?.q" placeholder="Search tag, name, serial..." class="filter-input" />
+        <select name="status" class="filter-select">
+            <option value="">All Statuses</option>
+            @foreach (var s in Enum.GetNames(typeof(AssetStatus)))
+            {
+                <option value="@s" selected="@(filter?.status == s ? "selected" : null)">@s</option>
+            }
+        </select>
+        <select name="category" class="filter-select">
+            <option value="">All Categories</option>
+            @foreach (var c in categories)
+            {
+                <option value="@c.Id" selected="@(filter?.category?.ToString() == c.Id.ToString() ? "selected" : null)">@c.Name</option>
+            }
+        </select>
+        <select name="department" class="filter-select">
+            <option value="">All Departments</option>
+            @foreach (var d in departments)
+            {
+                <option value="@d.Id" selected="@(filter?.department?.ToString() == d.Id.ToString() ? "selected" : null)">@d.Name</option>
+            }
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="?">Clear</a>
+    </form>
+</div>
 
-<h2>Quick Status Change</h2>
-<form asp-action="ChangeStatus" method="post" class="form-grid">
-    @Html.AntiForgeryToken()
-    <label>Asset</label>
-    <select name="AssetId">
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tag Code</th>
+                <th>Asset Name</th>
+                <th>Category</th>
+                <th>Brand / Model</th>
+                <th>Status</th>
+                <th>Condition</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Custodian</th>
+                <th>Purchase Cost</th>
+                <th>Warranty</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
         @foreach (var item in Model)
         {
-            <option value="@item.Id">@item.TagCode - @item.AssetName</option>
+            var statusClass = item.CurrentStatus switch {
+                AssetStatus.ActiveAssigned => "badge-success",
+                AssetStatus.RegisteredUnassigned => "badge-info",
+                AssetStatus.AssignedPendingConfirmation => "badge-warning",
+                AssetStatus.UnderRepair => "badge-orange",
+                AssetStatus.Damaged => "badge-danger",
+                AssetStatus.LoanedOutExternal or AssetStatus.LoanedOutInternal => "badge-gold",
+                AssetStatus.Retired or AssetStatus.Sold or AssetStatus.Discarded => "badge-muted",
+                _ => "badge-default"
+            };
+            var condClass = item.CurrentCondition switch {
+                "Good" => "badge-success",
+                "Fair" => "badge-warning",
+                "Poor" or "Damaged" => "badge-danger",
+                _ => "badge-default"
+            };
+            var warrantyExpired = item.WarrantyExpiryDate.HasValue && item.WarrantyExpiryDate.Value < DateTime.UtcNow;
+            <tr>
+                <td><a asp-action="Detail" asp-route-id="@item.Id" class="tag-link">@item.TagCode</a></td>
+                <td>
+                    <a asp-action="Detail" asp-route-id="@item.Id" style="color:inherit;text-decoration:none;font-weight:500;">@item.AssetName</a>
+                    @if (!string.IsNullOrEmpty(item.SerialNumber))
+                    {
+                        <div class="text-muted" style="font-size:0.75rem;">S/N: @item.SerialNumber</div>
+                    }
+                </td>
+                <td>@item.AssetCategory?.Name</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(item.Brand)) { <span>@item.Brand</span> }
+                    @if (!string.IsNullOrEmpty(item.ModelNumber)) { <div class="text-muted" style="font-size:0.75rem;">@item.ModelNumber</div> }
+                </td>
+                <td><span class="badge @statusClass">@item.CurrentStatus</span></td>
+                <td><span class="badge @condClass">@item.CurrentCondition</span></td>
+                <td>@item.CurrentDepartment?.Name</td>
+                <td>@item.CurrentLocation?.Name</td>
+                <td>
+                    @if (item.CurrentCustodian != null)
+                    {
+                        <span title="@item.CurrentCustodian.Email">@item.CurrentCustodian.FullName</span>
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td>@(item.PurchaseCost.HasValue ? "₦" + item.PurchaseCost.Value.ToString("N0") : "—")</td>
+                <td>
+                    @if (item.WarrantyExpiryDate.HasValue)
+                    {
+                        <span class="@(warrantyExpired ? "text-danger" : "")">@item.WarrantyExpiryDate.Value.ToString("dd MMM yyyy")</span>
+                        if (warrantyExpired) { <div class="text-danger" style="font-size:0.72rem;">Expired</div> }
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td>
+                    <div class="action-links">
+                        <a asp-action="Detail" asp-route-id="@item.Id" class="btn btn-xs">View</a>
+                        <a asp-action="History" asp-route-id="@item.Id" class="btn btn-xs btn-outline">History</a>
+                        @if (item.CurrentStatus == AssetStatus.RegisteredUnassigned || item.CurrentStatus == AssetStatus.RecalledToStorage)
+                        {
+                            <a asp-controller="Assignments" asp-action="Create" asp-route-assetId="@item.Id" class="btn btn-xs btn-gold">Assign</a>
+                        }
+                    </div>
+                </td>
+            </tr>
         }
-    </select>
-
-    <label>Next Status</label>
-    <select name="NextStatus" asp-items="Html.GetEnumSelectList<FrislEams.Web.Domain.AssetStatus>()"></select>
-
-    <label>Reason</label>
-    <input name="Reason" required />
-
-    <label>Changed By</label>
-    <input name="ChangedBy" value="Admin" />
-
-    <button class="btn" type="submit">Apply Transition</button>
-</form>
+        @if (!Model.Any())
+        {
+            <tr><td colspan="12" class="empty-state">No assets found matching your filters.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

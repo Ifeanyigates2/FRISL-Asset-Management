@@ -16,11 +16,14 @@ public class AssetRegistrationVm
     public string StateOfPurchase { get; set; } = "New";
     public int? SupplierId { get; set; }
     public string? SerialNumber { get; set; }
+    public string? ModelNumber { get; set; }
+    public string? Brand { get; set; }
     public DateTime? WarrantyExpiryDate { get; set; }
     public int? ExpectedServiceYears { get; set; }
     public string CurrentCondition { get; set; } = "Good";
     public int InitialLocationId { get; set; }
     public int? InitialDepartmentId { get; set; }
+    public string? Notes { get; set; }
     [Required]
     public string RfidCode { get; set; } = string.Empty;
 }
@@ -45,6 +48,7 @@ public class AssignmentInitiateVm
     public string AssignedCondition { get; set; } = "Good";
     public DateTime? ExpectedReturnDate { get; set; }
     public string Notes { get; set; } = string.Empty;
+    public string AssignedBy { get; set; } = "Admin";
 }
 
 public class AssignmentConfirmVm
@@ -75,6 +79,7 @@ public class ApproveRepairVm
     public string Action { get; set; } = "Repair";
     [Required]
     public string Reason { get; set; } = string.Empty;
+    public int? ContractorId { get; set; }
 }
 
 public class LoanRequestVm
@@ -115,6 +120,7 @@ public class StartAuditVm
     public int? DepartmentId { get; set; }
     [Required]
     public string InitiatedBy { get; set; } = "Auditor";
+    public string? Notes { get; set; }
 }
 
 public class SubmitAuditResultVm
@@ -134,6 +140,7 @@ public class ReportFilterVm
     public int? DepartmentId { get; set; }
     public int? CategoryId { get; set; }
     public string? Status { get; set; }
+    public string? Condition { get; set; }
 }
 
 public class DepreciationRowVm
@@ -147,6 +154,28 @@ public class DepreciationRowVm
     public decimal AnnualDepreciation { get; set; }
     public decimal AccumulatedDepreciation { get; set; }
     public decimal NetBookValue { get; set; }
+    public int AgeYears { get; set; }
+    public string DepreciationPct { get; set; } = string.Empty;
+}
+
+public class AgingRowVm
+{
+    public int AssetId { get; set; }
+    public string TagCode { get; set; } = string.Empty;
+    public string AssetName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Condition { get; set; } = string.Empty;
+    public DateTime? PurchaseDate { get; set; }
+    public int AgeMonths { get; set; }
+    public int AgeYears { get; set; }
+    public int UsefulLifeYears { get; set; }
+    public string AgeBand { get; set; } = string.Empty;
+    public decimal? PurchaseCost { get; set; }
+    public DateTime? WarrantyExpiry { get; set; }
+    public bool WarrantyExpired { get; set; }
 }
 
 public class ProcurementItemVm

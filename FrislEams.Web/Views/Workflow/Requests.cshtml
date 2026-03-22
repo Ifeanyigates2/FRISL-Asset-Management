@@ -1,59 +1,206 @@
 @model List<AssetRequest>
 @{
+    ViewData["Title"] = "Asset Requests";
     var staff = ViewBag.Staff as List<Staff> ?? new();
     var assets = ViewBag.Assets as List<Asset> ?? new();
+    var departments = ViewBag.Departments as List<Department> ?? new();
+    var pendingDept = Model.Where(r => r.Status == "Pending Department Approval").ToList();
+    var pendingAdmin = Model.Where(r => r.Status == "Pending Admin Approval").ToList();
+    var approved = Model.Where(r => r.Status.StartsWith("Approved")).ToList();
+    var rejected = Model.Where(r => r.Status == "Rejected").ToList();
 }
 
-<h1>Asset Requests</h1>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Requests</h1>
+        <p class="page-subtitle">Three-stage approval: Staff → Department Head → Admin</p>
+    </div>
+    <div class="flex-gap">
+        <span class="badge badge-warning">@pendingDept.Count Dept. Pending</span>
+        <span class="badge badge-orange">@pendingAdmin.Count Admin Pending</span>
+        <span class="badge badge-success">@approved.Count Approved</span>
+    </div>
+</div>
 
-<form asp-action="CreateRequest" method="post" class="form-grid">
-    @Html.AntiForgeryToken()
-    <label>Request Type</label>
-    <select name="RequestType">
-        <option>New</option>
-        <option>Replacement</option>
-        <option>Loan</option>
-    </select>
+<!-- New Request Form -->
+<div class="collapsible-section">
+    <div class="collapsible-header" onclick="toggleSection('reqFormBody')">
+        <h3>+ Submit New Asset Request</h3>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="reqFormBody" style="display:none;">
+        <form asp-action="CreateRequest" method="post" class="form-inline-grid">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label required">Request Type</label>
+                <select name="RequestType" class="form-control">
+                    <option value="New Asset">New Asset</option>
+                    <option value="Replacement">Replacement</option>
+                    <option value="Transfer">Transfer</option>
+                    <option value="Disposal">Disposal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Requested By</label>
+                <select name="RequestedByStaffId" class="form-control" required>
+                    <option value="">-- Select Staff --</option>
+                    @foreach (var s in staff)
+                    {
+                        <option value="@s.Id">@s.FullName — @s.Department?.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Department</label>
+                <select name="DepartmentId" class="form-control" required>
+                    <option value="">-- Select Department --</option>
+                    @foreach (var d in departments)
+                    {
+                        <option value="@d.Id">@d.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Related Asset (Optional)</label>
+                <select name="AssetId" class="form-control">
+                    <option value="">-- None --</option>
+                    @foreach (var a in assets)
+                    {
+                        <option value="@a.Id">@a.TagCode — @a.AssetName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label required">Description / Justification</label>
+                <textarea name="Description" class="form-control" rows="3" required placeholder="Provide details and business justification for this request..."></textarea>
+            </div>
+            <div style="grid-column:1/-1;">
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-    <label>Requested By Staff</label>
-    <select name="RequestedByStaffId">
-        @foreach (var s in staff)
+<!-- Stage 1: Pending Department Approval -->
+@if (pendingDept.Any())
+{
+    <div class="info-card" style="border-left:4px solid #e8a00e;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#856404;">Stage 1 — Awaiting Department Head Approval (@pendingDept.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Type</th><th>Requested By</th><th>Department</th><th>Description</th><th>Raised</th><th>Dept. Head Action</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var r in pendingDept)
+                {
+                    <tr>
+                        <td><span class="badge badge-info">@r.RequestType</span></td>
+                        <td>@r.RequestedByStaff?.FullName</td>
+                        <td>@r.Department?.Name</td>
+                        <td style="font-size:0.83rem;max-width:250px;">@r.Description</td>
+                        <td style="font-size:0.82rem;">@r.CreatedAt.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <form asp-action="ApproveDeptRequest" method="post" style="display:flex;gap:6px;align-items:center;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input name="approverName" class="form-control form-control-sm" placeholder="Dept. Head name" required />
+                                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                            </form>
+                            <form asp-action="RejectRequest" method="post" style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input name="reason" class="form-control form-control-sm" placeholder="Rejection reason" required />
+                                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Stage 2: Pending Admin Approval -->
+@if (pendingAdmin.Any())
+{
+    <div class="info-card" style="border-left:4px solid #fd7e14;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#fd7e14;">Stage 2 — Awaiting Admin Approval (@pendingAdmin.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Type</th><th>Requested By</th><th>Department</th><th>Dept. Head</th><th>Description</th><th>Admin Action</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var r in pendingAdmin)
+                {
+                    <tr>
+                        <td><span class="badge badge-info">@r.RequestType</span></td>
+                        <td>@r.RequestedByStaff?.FullName</td>
+                        <td>@r.Department?.Name</td>
+                        <td>@r.ApprovedByDepartmentHead</td>
+                        <td style="font-size:0.83rem;max-width:250px;">@r.Description</td>
+                        <td>
+                            <form asp-action="ApproveAdminRequest" method="post" style="display:flex;gap:6px;align-items:center;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input name="approverName" class="form-control form-control-sm" placeholder="Admin name" required value="@(Context.Session.GetString("UserName") ?? "Admin")" />
+                                <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                            </form>
+                            <form asp-action="RejectRequest" method="post" style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <input name="reason" class="form-control form-control-sm" placeholder="Rejection reason" required />
+                                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- All Requests History -->
+<div class="table-card" style="margin-top:1.5rem;">
+    <div class="table-header-bar">
+        <h3 style="font-size:1rem;font-weight:600;color:#1d3461;">All Requests (@Model.Count)</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Type</th><th>Status</th><th>Requester</th><th>Department</th><th>Description</th><th>Raised</th><th>Dept. Head</th><th>Admin</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var r in Model.OrderByDescending(x => x.CreatedAt))
         {
-            <option value="@s.Id">@s.FullName</option>
+            <tr>
+                <td><span class="badge badge-info">@r.RequestType</span></td>
+                <td>
+                    <span class="badge @(r.Status.Contains("Approved") ? "badge-success" : r.Status == "Rejected" ? "badge-danger" : "badge-warning")" style="font-size:0.75rem;">
+                        @r.Status
+                    </span>
+                </td>
+                <td>@r.RequestedByStaff?.FullName</td>
+                <td>@r.Department?.Name</td>
+                <td style="font-size:0.82rem;max-width:220px;">@r.Description</td>
+                <td style="font-size:0.82rem;">@r.CreatedAt.ToString("dd MMM yyyy")</td>
+                <td style="font-size:0.82rem;">@(r.ApprovedByDepartmentHead ?? "—")</td>
+                <td style="font-size:0.82rem;">@(r.ApprovedByAdmin ?? (r.Status == "Rejected" ? r.RejectionReason : "—"))</td>
+            </tr>
         }
-    </select>
-
-    <label>Department Id</label>
-    <input name="DepartmentId" type="number" required />
-
-    <label>Asset (Optional)</label>
-    <select name="AssetId">
-        <option value="">-- Optional --</option>
-        @foreach (var a in assets)
+        @if (!Model.Any())
         {
-            <option value="@a.Id">@a.TagCode</option>
+            <tr><td colspan="8" class="empty-state">No asset requests yet.</td></tr>
         }
-    </select>
+        </tbody>
+    </table>
+</div>
 
-    <label>Description</label>
-    <textarea name="Description" required></textarea>
-
-    <button class="btn" type="submit">Submit Request</button>
-</form>
-
-<table>
-    <thead>
-        <tr><th>Type</th><th>Status</th><th>Description</th><th>Date</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var r in Model)
-    {
-        <tr>
-            <td>@r.RequestType</td>
-            <td>@r.Status</td>
-            <td>@r.Description</td>
-            <td>@r.CreatedAt.ToLocalTime()</td>
-        </tr>
-    }
-    </tbody>
-</table>
+<script>
+function toggleSection(id) {
+    var el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>

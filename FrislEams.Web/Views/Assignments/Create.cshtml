@@ -1,57 +1,118 @@
 @model AssignmentInitiateVm
 @{
+    ViewData["Title"] = "New Assignment";
     var assets = ViewBag.Assets as List<Asset> ?? new();
     var staff = ViewBag.Staff as List<Staff> ?? new();
     var departments = ViewBag.Departments as List<Department> ?? new();
     var locations = ViewBag.Locations as List<Location> ?? new();
 }
 
-<h1>Initiate Assignment</h1>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Initiate Asset Assignment</h1>
+        <p class="page-subtitle">Assign a registered, unassigned asset to a staff member or department.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline">← Back to Assignments</a>
+</div>
 
-<form asp-action="Create" method="post" class="form-grid">
+<div class="info-card" style="border-left:4px solid #1d3461;background:#f7f9ff;margin-bottom:1.5rem;">
+    <strong>Two-Leg Assignment Process:</strong>
+    <p style="margin:0.25rem 0 0;font-size:0.875rem;color:#555;">
+        Step 1 (here): Admin initiates the assignment. &nbsp;·&nbsp;
+        Step 2: Assignee confirms receipt on the Assignments page. Asset moves to <em>Active – Assigned</em> only after confirmation.
+    </p>
+</div>
+
+<form asp-action="Create" method="post" class="form-card">
     @Html.AntiForgeryToken()
-    <label>Asset</label>
-    <select asp-for="AssetId">
-        @foreach (var a in assets)
-        {
-            <option value="@a.Id">@a.TagCode - @a.AssetName</option>
-        }
-    </select>
+    <div asp-validation-summary="ModelOnly" class="alert alert-error"></div>
 
-    <label>Assign To Staff (Optional)</label>
-    <select asp-for="AssignedToStaffId">
-        <option value="">-- Optional --</option>
-        @foreach (var s in staff)
-        {
-            <option value="@s.Id">@s.FullName</option>
-        }
-    </select>
+    <div class="form-section">
+        <h3 class="form-section-title">Select Asset</h3>
+        <div class="form-group">
+            <label asp-for="AssetId" class="form-label required">Asset to Assign</label>
+            <select asp-for="AssetId" class="form-control">
+                <option value="">-- Select Asset --</option>
+                @foreach (var a in assets)
+                {
+                    <option value="@a.Id" selected="@(a.Id == Model.AssetId ? "selected" : null)">
+                        @a.TagCode — @a.AssetName (@a.AssetCategory?.Name)
+                    </option>
+                }
+            </select>
+            @if (!assets.Any())
+            {
+                <div class="field-hint text-warning">No assets are currently in an assignable state (RegisteredUnassigned).</div>
+            }
+        </div>
+    </div>
 
-    <label>Assign To Department (Optional)</label>
-    <select asp-for="AssignedToDepartmentId">
-        <option value="">-- Optional --</option>
-        @foreach (var d in departments)
-        {
-            <option value="@d.Id">@d.Name</option>
-        }
-    </select>
+    <div class="form-section">
+        <h3 class="form-section-title">Assignee</h3>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label asp-for="AssignedToStaffId" class="form-label">Assign to Staff Member</label>
+                <select asp-for="AssignedToStaffId" class="form-control">
+                    <option value="">-- Optional (department pool) --</option>
+                    @foreach (var s in staff.Where(x => x.IsActive))
+                    {
+                        <option value="@s.Id">@s.FullName — @s.Department?.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="AssignedToDepartmentId" class="form-label">Assign to Department</label>
+                <select asp-for="AssignedToDepartmentId" class="form-control">
+                    <option value="">-- Optional --</option>
+                    @foreach (var d in departments)
+                    {
+                        <option value="@d.Id">@d.Name (@d.Code)</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
 
-    <label>Assigned Location</label>
-    <select asp-for="AssignedLocationId">
-        @foreach (var l in locations)
-        {
-            <option value="@l.Id">@l.Name</option>
-        }
-    </select>
+    <div class="form-section">
+        <h3 class="form-section-title">Location &amp; Condition</h3>
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label asp-for="AssignedLocationId" class="form-label required">Assignment Location</label>
+                <select asp-for="AssignedLocationId" class="form-control">
+                    <option value="">-- Select Location --</option>
+                    @foreach (var l in locations)
+                    {
+                        <option value="@l.Id">@l.Name (@l.Code)</option>
+                    }
+                </select>
+                <span asp-validation-for="AssignedLocationId" class="field-error"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AssignedCondition" class="form-label required">Asset Condition at Assignment</label>
+                <select asp-for="AssignedCondition" class="form-control">
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label asp-for="ExpectedReturnDate" class="form-label">Expected Return Date (Optional)</label>
+                <input asp-for="ExpectedReturnDate" type="date" class="form-control" />
+                <div class="field-hint">Leave blank for permanent assignment</div>
+            </div>
+            <div class="form-group">
+                <label asp-for="AssignedBy" class="form-label">Assigned By</label>
+                <input asp-for="AssignedBy" class="form-control" value="@(Context.Session.GetString("UserName") ?? "Admin")" />
+            </div>
+        </div>
+        <div class="form-group">
+            <label asp-for="Notes" class="form-label">Notes</label>
+            <textarea asp-for="Notes" class="form-control" rows="2" placeholder="Any notes about this assignment..."></textarea>
+        </div>
+    </div>
 
-    <label>Asset Condition</label>
-    <input asp-for="AssignedCondition" />
-
-    <label>Expected Return Date</label>
-    <input asp-for="ExpectedReturnDate" type="date" />
-
-    <label>Notes</label>
-    <textarea asp-for="Notes"></textarea>
-
-    <button class="btn" type="submit">Initiate</button>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-lg">Initiate Assignment</button>
+        <a asp-action="Index" class="btn btn-outline btn-lg">Cancel</a>
+    </div>
 </form>

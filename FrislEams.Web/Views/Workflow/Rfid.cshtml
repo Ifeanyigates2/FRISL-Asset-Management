@@ -1,38 +1,128 @@
 @model List<RfidEvent>
+@{
+    ViewData["Title"] = "RFID Monitoring";
+    int alertCount = ViewBag.AlertCount ?? 0;
+    int totalEvents = ViewBag.TotalEvents ?? Model.Count;
+    int activeGrants = ViewBag.ActiveGrants ?? 0;
+}
 
-<h1>RFID Monitoring</h1>
+<div class="page-header">
+    <div class="page-title">
+        <h1>RFID Exit Monitoring</h1>
+        <p class="page-subtitle">Real-time asset movement tracking via RFID door readers</p>
+    </div>
+    <div class="flex-gap">
+        <span class="badge @(alertCount > 0 ? "badge-danger" : "badge-success")">@alertCount Alert@(alertCount != 1 ? "s" : "")</span>
+        <span class="badge badge-info">@totalEvents Event@(totalEvents != 1 ? "s" : "") Total</span>
+        <span class="badge badge-gold">@activeGrants Active Exit Grant@(activeGrants != 1 ? "s" : "")</span>
+    </div>
+</div>
 
-<form asp-action="RfidScan" method="post" class="form-grid">
-    @Html.AntiForgeryToken()
-    <label>RFID Code</label>
-    <input name="RfidCode" required />
+<div class="cards-grid cards-grid-3" style="margin-bottom:1.5rem;">
+    <div class="metric-card @(alertCount > 0 ? "danger" : "success")">
+        <div class="metric-label">Security Alerts</div>
+        <div class="metric-value">@alertCount</div>
+        <div class="metric-sub">unauthorized/unknown RFID events</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Total Scan Events</div>
+        <div class="metric-value">@totalEvents</div>
+        <div class="metric-sub">all-time RFID scans</div>
+    </div>
+    <div class="metric-card gold">
+        <div class="metric-label">Active Exit Grants</div>
+        <div class="metric-value">@activeGrants</div>
+        <div class="metric-sub">authorized out-of-premises assets</div>
+    </div>
+</div>
 
-    <label>Door Location</label>
-    <input name="DoorLocation" value="Main Gate" required />
+<!-- Manual Scan Form -->
+<div class="info-card" style="margin-bottom:1.5rem;">
+    <h3 class="info-card-title">Simulate RFID Door Scan</h3>
+    <p style="font-size:0.875rem;color:#666;margin-bottom:1rem;">
+        Use this form to simulate a door RFID reader scan. In production, this would be triggered automatically by the RFID hardware integration.
+    </p>
+    <form asp-action="RfidScan" method="post" class="inline-form-flex">
+        @Html.AntiForgeryToken()
+        <div class="form-group" style="flex:1;">
+            <label class="form-label required">RFID Tag Code</label>
+            <input name="RfidCode" class="form-control" placeholder="e.g. RFID-000101" required />
+        </div>
+        <div class="form-group" style="flex:1;">
+            <label class="form-label required">Door / Gate Location</label>
+            <select name="DoorLocation" class="form-control">
+                <option value="Main Gate">Main Gate</option>
+                <option value="Staff Entrance">Staff Entrance</option>
+                <option value="Rear Exit">Rear Exit</option>
+                <option value="Loading Bay">Loading Bay</option>
+                <option value="Server Room Door">Server Room Door</option>
+            </select>
+        </div>
+        <div class="form-group" style="align-self:end;">
+            <button type="submit" class="btn btn-primary">Process Scan</button>
+        </div>
+    </form>
+</div>
 
-    <button class="btn" type="submit">Submit Door Scan</button>
-</form>
-
-<table>
-    <thead>
-        <tr>
-            <th>Time</th>
-            <th>RFID</th>
-            <th>Event</th>
-            <th>Status</th>
-            <th>Alert</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var e in Model)
-    {
-        <tr>
-            <td>@e.EventTime.ToLocalTime()</td>
-            <td>@e.RfidCode</td>
-            <td>@e.EventType</td>
-            <td>@e.ProcessedStatus</td>
-            <td>@(e.AlertTriggered ? "Yes" : "No")</td>
-        </tr>
-    }
-    </tbody>
-</table>
+<!-- Events Log -->
+<div class="table-card">
+    <div class="table-header-bar">
+        <h3 style="font-size:1rem;font-weight:600;color:#1d3461;">Recent RFID Events (last @Model.Count)</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date &amp; Time</th>
+                <th>RFID Code</th>
+                <th>Asset</th>
+                <th>Event Type</th>
+                <th>Door / Gate</th>
+                <th>Status</th>
+                <th>Alert</th>
+                <th>Alert Message</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var e in Model)
+        {
+            <tr class="@(e.AlertTriggered ? "row-danger" : "")">
+                <td style="white-space:nowrap;font-size:0.82rem;">@e.EventTime.ToString("dd MMM yyyy, HH:mm")</td>
+                <td class="monospace" style="font-size:0.82rem;">@e.RfidCode</td>
+                <td>
+                    @if (e.Asset != null)
+                    {
+                        <a asp-controller="Assets" asp-action="Detail" asp-route-id="@e.AssetId" class="tag-link" style="font-size:0.82rem;">@e.Asset.TagCode</a>
+                        <div style="font-size:0.75rem;color:#555;">@e.Asset.AssetName</div>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Unknown</span>
+                    }
+                </td>
+                <td>
+                    <span class="badge @(e.EventType == "UnauthorizedAttempt" ? "badge-danger" : e.EventType == "AuthorizedExitOrReturn" ? "badge-success" : "badge-warning")" style="font-size:0.75rem;">
+                        @e.EventType
+                    </span>
+                </td>
+                <td>@e.DoorLocation</td>
+                <td style="font-size:0.82rem;">@e.ProcessedStatus</td>
+                <td>
+                    @if (e.AlertTriggered)
+                    {
+                        <span class="badge badge-danger">⚠ ALERT</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-success">✓ OK</span>
+                    }
+                </td>
+                <td style="font-size:0.78rem;max-width:250px;color:#dc3545;">@(e.AlertMessage ?? "—")</td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="8" class="empty-state">No RFID scan events recorded yet.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

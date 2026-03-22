@@ -1,0 +1,145 @@
+@model List<AgingRowVm>
+@{
+    ViewData["Title"] = "Asset Aging Report";
+    var under3 = Model.Count(r => r.AgeBand == "0-3 Years");
+    var three5 = Model.Count(r => r.AgeBand == "3-5 Years");
+    var five10 = Model.Count(r => r.AgeBand == "5-10 Years");
+    var over10 = Model.Count(r => r.AgeBand == "10+ Years");
+    int total = Model.Count;
+}
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Aging Report</h1>
+        <p class="page-subtitle">Asset age distribution and lifecycle analysis — @total assets</p>
+    </div>
+    <div class="flex-gap">
+        <a asp-action="Index" class="btn btn-outline">← Asset Register</a>
+        <a asp-action="Depreciation" class="btn btn-outline">Depreciation Report</a>
+    </div>
+</div>
+
+<!-- Age Band Summary -->
+<div class="cards-grid cards-grid-4" style="margin-bottom:1.5rem;">
+    <div class="metric-card success">
+        <div class="metric-label">0 – 3 Years</div>
+        <div class="metric-value">@under3</div>
+        <div class="metric-sub">relatively new assets</div>
+    </div>
+    <div class="metric-card gold">
+        <div class="metric-label">3 – 5 Years</div>
+        <div class="metric-value">@three5</div>
+        <div class="metric-sub">mid-life assets</div>
+    </div>
+    <div class="metric-card warning">
+        <div class="metric-label">5 – 10 Years</div>
+        <div class="metric-value">@five10</div>
+        <div class="metric-sub">aging, review warranted</div>
+    </div>
+    <div class="metric-card danger">
+        <div class="metric-label">10+ Years</div>
+        <div class="metric-value">@over10</div>
+        <div class="metric-sub">may require replacement</div>
+    </div>
+</div>
+
+<!-- Age Distribution Bar -->
+@if (total > 0)
+{
+    <div class="info-card" style="margin-bottom:1.5rem;">
+        <h3 class="info-card-title">Age Band Distribution</h3>
+        @{
+            var bands = new[] {
+                ("0-3 Years", under3, "#198754"),
+                ("3-5 Years", three5, "#c4970a"),
+                ("5-10 Years", five10, "#e8a00e"),
+                ("10+ Years", over10, "#dc3545")
+            };
+        }
+        @foreach (var (label, count, color) in bands)
+        {
+            var pct = total > 0 ? (int)(count * 100.0 / total) : 0;
+            <div class="bar-chart-item">
+                <span class="bar-label" style="min-width:100px;">@label</span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width:@pct%;background:@color;"></div>
+                </div>
+                <span class="bar-count">@count (@pct%)</span>
+            </div>
+        }
+    </div>
+}
+
+<!-- Aging Detail Table -->
+<div class="table-card">
+    <div class="table-header-bar">
+        <h3 style="font-size:1rem;font-weight:600;color:#1d3461;">Asset Aging Detail</h3>
+        <div style="display:flex;gap:0.5rem;">
+            <span class="badge badge-success" style="font-size:0.72rem;">● 0-3 Yrs</span>
+            <span class="badge badge-gold" style="font-size:0.72rem;">● 3-5 Yrs</span>
+            <span class="badge badge-warning" style="font-size:0.72rem;">● 5-10 Yrs</span>
+            <span class="badge badge-danger" style="font-size:0.72rem;">● 10+ Yrs</span>
+        </div>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Tag Code</th>
+                <th>Asset Name</th>
+                <th>Category</th>
+                <th>Department</th>
+                <th>Purchase Date</th>
+                <th style="text-align:center;">Age (Years)</th>
+                <th>Age Band</th>
+                <th>Status</th>
+                <th>Useful Life</th>
+                <th>Life Remaining</th>
+                <th>Recommendation</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.OrderByDescending(r => r.AgeYears))
+        {
+            var bandClass = row.AgeBand switch {
+                "0-3 Years" => "badge-success",
+                "3-5 Years" => "badge-gold",
+                "5-10 Years" => "badge-warning",
+                _ => "badge-danger"
+            };
+            var lifeRemaining = row.UsefulLifeYears - (int)row.AgeYears;
+            var lifeRemainingClass = lifeRemaining <= 0 ? "text-danger" : lifeRemaining <= 2 ? "text-warning" : "";
+            var recommendation = lifeRemaining <= 0 ? "⚠ Review for Retirement" : lifeRemaining <= 1 ? "Plan Replacement Soon" : lifeRemaining <= 3 ? "Monitor Closely" : "Active — No Action";
+            <tr>
+                <td class="monospace" style="font-size:0.82rem;">
+                    <a asp-controller="Assets" asp-action="Detail" asp-route-id="@row.AssetId" class="tag-link">@row.TagCode</a>
+                </td>
+                <td>@row.AssetName</td>
+                <td>@row.Category</td>
+                <td>@row.Department</td>
+                <td style="font-size:0.82rem;white-space:nowrap;">@(row.PurchaseDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                <td style="text-align:center;font-weight:600;">@row.AgeYears</td>
+                <td><span class="badge @bandClass" style="font-size:0.75rem;">@row.AgeBand</span></td>
+                <td style="font-size:0.82rem;">@row.Status</td>
+                <td style="text-align:center;">@row.UsefulLifeYears yrs</td>
+                <td style="text-align:center;" class="@lifeRemainingClass">
+                    @if (lifeRemaining <= 0)
+                    {
+                        <strong>Expired</strong>
+                    }
+                    else
+                    {
+                        <span>@lifeRemaining yr@(lifeRemaining != 1 ? "s" : "")</span>
+                    }
+                </td>
+                <td style="font-size:0.82rem;color:@(lifeRemaining <= 0 ? "#dc3545" : lifeRemaining <= 2 ? "#856404" : "#555");">
+                    @recommendation
+                </td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="11" class="empty-state">No asset aging data available.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

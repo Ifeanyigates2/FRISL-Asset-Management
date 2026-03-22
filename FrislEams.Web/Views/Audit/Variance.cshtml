@@ -1,36 +1,132 @@
 @model List<AuditResult>
 @{
+    ViewData["Title"] = "Variance Report";
     var session = ViewBag.Session as AuditSession;
     var variance = ViewBag.Variance as Dictionary<string, int> ?? new();
+    int seen = variance.GetValueOrDefault("Seen", 0);
+    int missing = variance.GetValueOrDefault("Missing", 0);
+    int misplaced = variance.GetValueOrDefault("Misplaced", 0);
+    int total = variance.GetValueOrDefault("Total", 0);
+    int conformance = total > 0 ? (int)(seen * 100.0 / total) : 0;
 }
 
-<h1>Audit Variance - Session @session?.Id</h1>
-<p>Type: @session?.AuditType | Department: @session?.Department?.Name | Status: @session?.Status</p>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Audit Variance Report</h1>
+        <p class="page-subtitle">Session #@session?.Id — @session?.AuditType · @(session?.Department?.Name ?? "All Departments")</p>
+    </div>
+    <div class="flex-gap">
+        <a asp-action="Index" class="btn btn-outline">← All Audit Sessions</a>
+        @if (session?.Status == "Open")
+        {
+            <a asp-action="Index" asp-route-id="@session.Id" class="btn btn-primary">Continue Recording</a>
+        }
+    </div>
+</div>
 
-<div class="cards-grid">
-    @foreach (var item in variance)
-    {
-        <div class="metric-card">
-            <h3>@item.Key</h3>
-            <p>@item.Value</p>
+<!-- Session Summary -->
+<div class="info-card" style="border-left:4px solid #1d3461;background:#f7f9ff;margin-bottom:1.5rem;">
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
+        <div>
+            <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Audit Type</div>
+            <div style="font-weight:600;color:#1d3461;">@session?.AuditType</div>
         </div>
+        <div>
+            <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Department</div>
+            <div style="font-weight:600;">@(session?.Department?.Name ?? "All Departments")</div>
+        </div>
+        <div>
+            <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Initiated By</div>
+            <div style="font-weight:600;">@session?.InitiatedBy</div>
+        </div>
+        <div>
+            <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Start Date</div>
+            <div style="font-weight:600;">@session?.StartDate.ToString("dd MMM yyyy")</div>
+        </div>
+        @if (session?.EndDate.HasValue == true)
+        {
+            <div>
+                <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Closed</div>
+                <div style="font-weight:600;">@session.EndDate.Value.ToString("dd MMM yyyy")</div>
+            </div>
+        }
+        <div>
+            <div style="font-size:0.75rem;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Status</div>
+            <span class="badge @(session?.Status == "Open" ? "badge-warning" : "badge-success")">@session?.Status</span>
+        </div>
+    </div>
+</div>
+
+<!-- Variance KPIs -->
+<div class="cards-grid cards-grid-4" style="margin-bottom:1.5rem;">
+    <div class="metric-card">
+        <div class="metric-label">Total Scanned</div>
+        <div class="metric-value">@total</div>
+        <div class="metric-sub">assets verified</div>
+    </div>
+    <div class="metric-card success">
+        <div class="metric-label">Seen / Present</div>
+        <div class="metric-value">@seen</div>
+        <div class="metric-sub">found at expected location</div>
+    </div>
+    <div class="metric-card danger">
+        <div class="metric-label">Missing</div>
+        <div class="metric-value">@missing</div>
+        <div class="metric-sub">not found during audit</div>
+    </div>
+    <div class="metric-card warning">
+        <div class="metric-label">Misplaced</div>
+        <div class="metric-value">@misplaced</div>
+        <div class="metric-sub">found at wrong location</div>
+    </div>
+</div>
+
+<!-- Conformance Bar -->
+<div class="info-card" style="margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+        <span style="font-weight:600;">Asset Conformance Rate</span>
+        <span style="font-weight:600;color:@(conformance >= 90 ? "#198754" : conformance >= 70 ? "#856404" : "#dc3545");">@conformance%</span>
+    </div>
+    <div style="height:18px;background:#e8edf5;border-radius:9px;overflow:hidden;">
+        <div style="height:100%;width:@conformance%;background:@(conformance >= 90 ? "#198754" : conformance >= 70 ? "#e8a00e" : "#dc3545");border-radius:9px;transition:width 0.5s;"></div>
+    </div>
+    @if (total == 0)
+    {
+        <p class="text-muted" style="margin-top:0.5rem;font-size:0.875rem;">No assets have been scanned in this session yet.</p>
     }
 </div>
 
-<table>
-    <thead>
-        <tr><th>Asset</th><th>Seen Status</th><th>Condition</th><th>Notes</th><th>Date</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var r in Model)
-    {
-        <tr>
-            <td>@r.Asset?.TagCode</td>
-            <td>@r.SeenStatus</td>
-            <td>@r.PhysicalCondition</td>
-            <td>@r.Notes</td>
-            <td>@r.CreatedAt.ToLocalTime()</td>
-        </tr>
-    }
-    </tbody>
-</table>
+<!-- Variance Detail Table -->
+<div class="table-card">
+    <div class="table-header-bar">
+        <h3 style="font-size:1rem;font-weight:600;color:#1d3461;">Audit Results Detail</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr><th>Asset Tag</th><th>Asset Name</th><th>Seen Status</th><th>Physical Condition</th><th>Notes</th><th>Recorded</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var r in Model)
+        {
+            <tr class="@(r.SeenStatus == "Missing" ? "row-danger" : r.SeenStatus == "Misplaced" ? "row-warning" : "")">
+                <td>
+                    <a asp-controller="Assets" asp-action="Detail" asp-route-id="@r.AssetId" class="tag-link">@r.Asset?.TagCode</a>
+                </td>
+                <td>@r.Asset?.AssetName</td>
+                <td>
+                    <span class="badge @(r.SeenStatus == "Seen" ? "badge-success" : r.SeenStatus == "Missing" ? "badge-danger" : "badge-warning")">
+                        @r.SeenStatus
+                    </span>
+                </td>
+                <td>@(r.PhysicalCondition ?? "—")</td>
+                <td style="font-size:0.82rem;">@(r.Notes ?? "—")</td>
+                <td style="font-size:0.82rem;">@r.CreatedAt.ToString("dd MMM yyyy, HH:mm")</td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="6" class="empty-state">No audit results recorded yet. Go back to the session and start scanning assets.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

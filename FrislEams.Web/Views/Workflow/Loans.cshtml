@@ -1,76 +1,211 @@
 @model List<LoanRequest>
+@using FrislEams.Web.Domain
 @{
+    ViewData["Title"] = "Loans & Exit Grants";
     var assets = ViewBag.Assets as List<Asset> ?? new();
     var staff = ViewBag.Staff as List<Staff> ?? new();
+    var pending = Model.Where(l => l.Status == "Pending").ToList();
+    var approved = Model.Where(l => l.Status == "Approved").ToList();
+    var returned = Model.Where(l => l.Status == "Returned").ToList();
 }
 
-<h1>Asset Loan Workflow</h1>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Loan &amp; Exit Grant Workflow</h1>
+        <p class="page-subtitle">Manage internal and external asset loans. External loans generate exit grants.</p>
+    </div>
+    <div class="flex-gap">
+        <span class="badge badge-warning">@pending.Count Pending</span>
+        <span class="badge badge-gold">@approved.Count Active</span>
+        <span class="badge badge-success">@returned.Count Returned</span>
+    </div>
+</div>
 
-<form asp-action="RaiseLoan" method="post" class="form-grid">
-    @Html.AntiForgeryToken()
-    <label>Asset</label>
-    <select name="AssetId">
-        @foreach (var a in assets)
-        {
-            <option value="@a.Id">@a.TagCode - @a.AssetName</option>
-        }
-    </select>
+<!-- New Loan Request Form -->
+<div class="collapsible-section">
+    <div class="collapsible-header" onclick="toggleSection('loanFormBody')">
+        <h3>+ Request Asset Loan</h3>
+        <span class="chevron">▼</span>
+    </div>
+    <div class="collapsible-body" id="loanFormBody" style="display:none;">
+        <form asp-action="RaiseLoan" method="post" class="form-inline-grid">
+            @Html.AntiForgeryToken()
+            <div class="form-group">
+                <label class="form-label required">Asset</label>
+                <select name="AssetId" class="form-control" required>
+                    <option value="">-- Select Asset --</option>
+                    @foreach (var a in assets)
+                    {
+                        <option value="@a.Id">@a.TagCode — @a.AssetName (@a.CurrentDepartment?.Name)</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Requested By</label>
+                <select name="RequestedByStaffId" class="form-control" required>
+                    <option value="">-- Staff Member --</option>
+                    @foreach (var s in staff)
+                    {
+                        <option value="@s.Id">@s.FullName</option>
+                    }
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Loan Type</label>
+                <select name="LoanType" class="form-control">
+                    <option value="Internal">Internal (between departments)</option>
+                    <option value="External">External (outside company) — requires exit grant</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Start Date</label>
+                <input name="StartDate" type="date" class="form-control" required value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Expected Return Date</label>
+                <input name="ExpectedReturnDate" type="date" class="form-control" required value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Purpose</label>
+                <input name="Purpose" class="form-control" placeholder="Reason for the loan" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Destination</label>
+                <input name="Destination" class="form-control" placeholder="Where is the asset going?" required />
+            </div>
+            <div class="form-group">
+                <label class="form-label required">Responsible Person</label>
+                <input name="ResponsiblePerson" class="form-control" placeholder="Person responsible for the asset" required />
+            </div>
+            <div style="grid-column:1/-1;">
+                <button type="submit" class="btn btn-primary">Submit Loan Request</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-    <label>Requested By Staff</label>
-    <select name="RequestedByStaffId">
-        @foreach (var s in staff)
-        {
-            <option value="@s.Id">@s.FullName</option>
-        }
-    </select>
-
-    <label>Loan Type</label>
-    <select name="LoanType">
-        <option>Internal</option>
-        <option>External</option>
-    </select>
-
-    <label>Start Date</label>
-    <input name="StartDate" type="date" required />
-
-    <label>Expected Return Date</label>
-    <input name="ExpectedReturnDate" type="date" required />
-
-    <label>Purpose</label>
-    <input name="Purpose" required />
-
-    <label>Destination</label>
-    <input name="Destination" required />
-
-    <label>Responsible Person</label>
-    <input name="ResponsiblePerson" required />
-
-    <button class="btn" type="submit">Raise Loan</button>
-</form>
-
-<table>
-    <thead>
-        <tr><th>Asset</th><th>Type</th><th>Status</th><th>Approval</th></tr>
-    </thead>
-    <tbody>
-    @foreach (var l in Model)
-    {
-        <tr>
-            <td>@l.Asset?.TagCode</td>
-            <td>@l.LoanType</td>
-            <td>@l.Status</td>
-            <td>
-                @if (l.Status == "Pending")
+<!-- Pending Approval -->
+@if (pending.Any())
+{
+    <div class="info-card" style="border-left:4px solid #e8a00e;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#856404;">Pending Approval (@pending.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Asset</th><th>Requester</th><th>Type</th><th>Purpose</th><th>Destination</th><th>Start</th><th>Return</th><th>Approve</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var l in pending)
                 {
-                    <form asp-action="ApproveLoan" method="post" class="inline-form">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="LoanRequestId" value="@l.Id" />
-                        <input name="ApprovedBy" value="Admin" required />
-                        <button class="btn" type="submit">Approve</button>
-                    </form>
+                    <tr>
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@l.AssetId" class="tag-link">@l.Asset?.TagCode</a>
+                            <div style="font-size:0.78rem;color:#555;">@l.Asset?.AssetName</div>
+                        </td>
+                        <td>@l.RequestedByStaff?.FullName</td>
+                        <td><span class="badge @(l.LoanType == "External" ? "badge-warning" : "badge-info")">@l.LoanType</span></td>
+                        <td style="font-size:0.83rem;max-width:180px;">@l.Purpose</td>
+                        <td>@l.Destination</td>
+                        <td style="font-size:0.82rem;">@l.StartDate.ToString("dd MMM yyyy")</td>
+                        <td style="font-size:0.82rem;">@l.ExpectedReturnDate.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <form asp-action="ApproveLoan" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="LoanRequestId" value="@l.Id" />
+                                <input name="ApprovedBy" class="form-control form-control-sm" value="@(Context.Session.GetString("UserName") ?? "Admin")" required />
+                                <button type="submit" class="btn btn-success btn-sm" style="margin-top:4px;">Approve &amp; Grant</button>
+                            </form>
+                        </td>
+                    </tr>
                 }
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Active Loans -->
+@if (approved.Any())
+{
+    <div class="info-card" style="border-left:4px solid #c4970a;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#c4970a;">Active Loans (@approved.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Asset</th><th>Requester</th><th>Type</th><th>Approved By</th><th>Destination</th><th>Return Due</th><th>Overdue</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var l in approved)
+                {
+                    var overdue = l.ExpectedReturnDate < DateTime.UtcNow;
+                    <tr class="@(overdue ? "row-danger" : "")">
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@l.AssetId" class="tag-link">@l.Asset?.TagCode</a>
+                            <div style="font-size:0.78rem;color:#555;">@l.Asset?.AssetName</div>
+                        </td>
+                        <td>@l.RequestedByStaff?.FullName</td>
+                        <td><span class="badge @(l.LoanType == "External" ? "badge-warning" : "badge-info")">@l.LoanType</span></td>
+                        <td>@l.ApprovedBy</td>
+                        <td>@l.Destination</td>
+                        <td style="font-size:0.82rem;@(overdue ? "color:#dc3545;font-weight:600;" : "")">@l.ExpectedReturnDate.ToString("dd MMM yyyy")</td>
+                        <td>
+                            @if (overdue)
+                            {
+                                <span class="badge badge-danger">OVERDUE</span>
+                            }
+                            else
+                            {
+                                <span style="color:#555;font-size:0.82rem;">@((l.ExpectedReturnDate - DateTime.UtcNow).Days) days left</span>
+                            }
+                        </td>
+                        <td>
+                            <form asp-action="ReturnLoan" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="loanId" value="@l.Id" />
+                                <button type="submit" class="btn btn-success btn-sm">Record Return</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Returned -->
+@if (returned.Any())
+{
+    <div class="info-card" style="border-left:4px solid #198754;margin-top:1.5rem;">
+        <h3 class="info-card-title" style="color:#198754;">Returned (@returned.Count)</h3>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr><th>Asset</th><th>Requester</th><th>Type</th><th>Purpose</th><th>Expected Return</th><th>Actual Return</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var l in returned)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@l.AssetId" class="tag-link">@l.Asset?.TagCode</a>
+                        </td>
+                        <td>@l.RequestedByStaff?.FullName</td>
+                        <td><span class="badge badge-muted">@l.LoanType</span></td>
+                        <td style="font-size:0.82rem;">@l.Purpose</td>
+                        <td style="font-size:0.82rem;">@l.ExpectedReturnDate.ToString("dd MMM yyyy")</td>
+                        <td style="font-size:0.82rem;">@(l.ActualReturnDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<script>
+function toggleSection(id) {
+    var el = document.getElementById(id);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>

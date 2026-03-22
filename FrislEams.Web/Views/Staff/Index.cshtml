@@ -1,0 +1,111 @@
+@model List<Staff>
+@{
+    ViewData["Title"] = "Staff Registry";
+    var departments = ViewBag.Departments as List<Department> ?? new();
+    int activeCount = Model.Count(s => s.IsActive);
+    int inactiveCount = Model.Count - activeCount;
+}
+
+<div class="page-header">
+    <div class="page-title">
+        <h1>Staff Registry</h1>
+        <p class="page-subtitle">@Model.Count staff member@(Model.Count != 1 ? "s" : "") — @activeCount active, @inactiveCount inactive</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">+ Add Staff Member</a>
+</div>
+
+<!-- Stats -->
+<div class="cards-grid cards-grid-3" style="margin-bottom:1.5rem;">
+    <div class="metric-card">
+        <div class="metric-label">Total Staff</div>
+        <div class="metric-value">@Model.Count</div>
+        <div class="metric-sub">all staff records</div>
+    </div>
+    <div class="metric-card success">
+        <div class="metric-label">Active</div>
+        <div class="metric-value">@activeCount</div>
+        <div class="metric-sub">currently employed</div>
+    </div>
+    <div class="metric-card navy">
+        <div class="metric-label">Departments</div>
+        <div class="metric-value">@departments.Count</div>
+        <div class="metric-sub">department groupings</div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar" style="margin-bottom:1.5rem;">
+    <form method="get" asp-action="Index" class="filter-form">
+        <input name="q" placeholder="Search name, email, staff ID..." class="filter-input" />
+        <select name="dept" class="filter-select">
+            <option value="">All Departments</option>
+            @foreach (var d in departments)
+            {
+                <option value="@d.Id">@d.Name</option>
+            }
+        </select>
+        <select name="status" class="filter-select">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="?" class="btn btn-outline">Clear</a>
+    </form>
+</div>
+
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Staff ID</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Joined</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var s in Model.OrderBy(x => x.Department?.Name).ThenBy(x => x.FullName))
+        {
+            <tr>
+                <td class="monospace" style="font-size:0.82rem;">@s.StaffId</td>
+                <td><strong>@s.FullName</strong></td>
+                <td>
+                    <span class="badge @(s.Role == "Admin" ? "badge-info" : s.Role == "Auditor" ? "badge-gold" : "badge-default")" style="font-size:0.75rem;">
+                        @s.Role
+                    </span>
+                </td>
+                <td>
+                    @s.Department?.Name
+                    @if (!string.IsNullOrEmpty(s.Department?.Code))
+                    {
+                        <div class="text-muted" style="font-size:0.75rem;">@s.Department.Code</div>
+                    }
+                </td>
+                <td style="font-size:0.82rem;">
+                    @if (!string.IsNullOrEmpty(s.Email))
+                    {
+                        <a href="mailto:@s.Email">@s.Email</a>
+                    }
+                    else { <span class="text-muted">—</span> }
+                </td>
+                <td style="font-size:0.82rem;">@(s.PhoneNumber ?? "—")</td>
+                <td style="font-size:0.82rem;white-space:nowrap;">@s.JoinedAt.ToString("dd MMM yyyy")</td>
+                <td>
+                    <span class="badge @(s.IsActive ? "badge-success" : "badge-muted")">
+                        @(s.IsActive ? "Active" : "Inactive")
+                    </span>
+                </td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="8" class="empty-state">No staff members found.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

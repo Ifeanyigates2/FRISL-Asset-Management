@@ -15,25 +15,18 @@ public class AssetLifecycleService(AppDbContext db)
         [AssetStatus.RegisteredUnassigned] =
         [
             AssetStatus.AssignedPendingConfirmation,
-            AssetStatus.Retired,
-            AssetStatus.Sold,
-            AssetStatus.Discarded
+            AssetStatus.Retired, AssetStatus.Sold, AssetStatus.Discarded
         ],
-        [AssetStatus.AssignedPendingConfirmation] = [AssetStatus.ActiveAssigned],
+        [AssetStatus.AssignedPendingConfirmation] = [AssetStatus.ActiveAssigned, AssetStatus.RegisteredUnassigned],
         [AssetStatus.ActiveAssigned] =
         [
-            AssetStatus.RecalledToStorage,
-            AssetStatus.UnderRepair,
-            AssetStatus.Damaged,
-            AssetStatus.LoanedOutInternal,
-            AssetStatus.LoanedOutExternal,
-            AssetStatus.Retired,
-            AssetStatus.Sold,
-            AssetStatus.Discarded
+            AssetStatus.RecalledToStorage, AssetStatus.UnderRepair, AssetStatus.Damaged,
+            AssetStatus.LoanedOutInternal, AssetStatus.LoanedOutExternal,
+            AssetStatus.Retired, AssetStatus.Sold, AssetStatus.Discarded
         ],
-        [AssetStatus.RecalledToStorage] = [AssetStatus.RegisteredUnassigned],
+        [AssetStatus.RecalledToStorage] = [AssetStatus.RegisteredUnassigned, AssetStatus.AssignedPendingConfirmation],
         [AssetStatus.Damaged] = [AssetStatus.UnderRepair, AssetStatus.Retired, AssetStatus.Sold, AssetStatus.Discarded],
-        [AssetStatus.UnderRepair] = [AssetStatus.ActiveAssigned, AssetStatus.PendingReplacement],
+        [AssetStatus.UnderRepair] = [AssetStatus.ActiveAssigned, AssetStatus.PendingReplacement, AssetStatus.Discarded],
         [AssetStatus.PendingReplacement] = [AssetStatus.Retired, AssetStatus.Discarded],
         [AssetStatus.LoanedOutInternal] = [AssetStatus.ActiveAssigned],
         [AssetStatus.LoanedOutExternal] = [AssetStatus.ActiveAssigned],
@@ -43,37 +36,32 @@ public class AssetLifecycleService(AppDbContext db)
     public (bool IsValid, string Error) ValidateTransition(AssetStatus from, AssetStatus to)
     {
         if (TerminalStates.Contains(from))
-        {
-            return (false, "Terminal states cannot transition.");
-        }
-
+            return (false, "Asset is in a terminal state and cannot be transitioned.");
         if (!Transitions.TryGetValue(from, out var validStates) || !validStates.Contains(to))
-        {
-            return (false, $"Invalid transition: {from} -> {to}");
-        }
-
+            return (false, $"Invalid transition: {from} → {to}");
         return (true, string.Empty);
     }
 
     public bool ChangeStatus(Asset asset, AssetStatus nextStatus, string reason, string changedBy)
     {
-        if (string.IsNullOrWhiteSpace(reason))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(reason)) return false;
 
         var validation = ValidateTransition(asset.CurrentStatus, nextStatus);
-        if (!validation.IsValid)
-        {
-            return false;
-        }
+        if (!validation.IsValid) return false;
 
         var previous = asset.CurrentStatus;
         asset.CurrentStatus = nextStatus;
+        asset.UpdatedAt = DateTime.UtcNow;
 
+        // Auto-move to storage for certain statuses
         if (nextStatus is AssetStatus.PendingReplacement or AssetStatus.RecalledToStorage or AssetStatus.Damaged)
         {
-            asset.CurrentLocationId = db.Locations.Where(l => l.Code == "STORAGE").Select(l => l.Id).FirstOrDefault();
+            var storeId = db.Locations
+                .Where(l => l.Code == "STORE")
+                .Select(l => (int?)l.Id)
+                .FirstOrDefault();
+            if (storeId.HasValue)
+                asset.CurrentLocationId = storeId;
         }
 
         db.AssetStatusHistories.Add(new AssetStatusHistory

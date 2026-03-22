@@ -1,3 +1,5 @@
+@model FrislEams.Web.Services.AdminDashboardMetrics
+@using FrislEams.Web.Services
 @{
     ViewData["Title"] = "Dashboard";
 }
@@ -5,71 +7,212 @@
 <div class="page-header">
     <div class="page-title">
         <h1>Asset Management Dashboard</h1>
+        <p class="page-subtitle">First Registrars &amp; Investor Services — EAMS Overview</p>
     </div>
     <div class="flex-gap">
-        <a asp-controller="Assets" asp-action="Register" class="btn btn-primary">➕ Register Asset</a>
-        <a href="/dashboard" class="btn btn-outline">📊 Full Dashboard</a>
+        <a asp-controller="Assets" asp-action="Register" class="btn btn-primary">+ Register New Asset</a>
+        <a href="/dashboard" class="btn btn-outline">Analytics View</a>
     </div>
 </div>
 
-<div class="cards-grid">
+<!-- KPI Cards Row 1 -->
+<div class="cards-grid cards-grid-5">
     <div class="metric-card">
-        <h3>Total Assets</h3>
-        <p>@ViewBag.TotalAssets</p>
+        <div class="metric-label">Total Assets</div>
+        <div class="metric-value">@Model.TotalAssets</div>
+        <div class="metric-sub">across all departments</div>
+    </div>
+    <div class="metric-card success">
+        <div class="metric-label">Active – Assigned</div>
+        <div class="metric-value">@Model.ActiveAssigned</div>
+        <div class="metric-sub">in productive use</div>
     </div>
     <div class="metric-card gold">
-        <h3>Pending Confirmations</h3>
-        <p>@ViewBag.PendingAssignments</p>
+        <div class="metric-label">Unassigned Stock</div>
+        <div class="metric-value">@Model.RegisteredUnassigned</div>
+        <div class="metric-sub">awaiting assignment</div>
+    </div>
+    <div class="metric-card warning">
+        <div class="metric-label">Under Repair</div>
+        <div class="metric-value">@Model.UnderRepair</div>
+        <div class="metric-sub">currently in repair</div>
     </div>
     <div class="metric-card danger">
-        <h3>RFID Exit Alerts</h3>
-        <p>@ViewBag.Alerts</p>
-    </div>
-    <div class="metric-card">
-        <h3>System Status</h3>
-        <p style="font-size:1.2rem;color:#0d5c38;">● Live</p>
+        <div class="metric-label">RFID Alerts</div>
+        <div class="metric-value">@Model.ExitAlerts</div>
+        <div class="metric-sub">flagged events</div>
     </div>
 </div>
 
-<h2>Quick Actions</h2>
+<!-- KPI Cards Row 2 -->
+<div class="cards-grid cards-grid-4" style="margin-top:1rem;">
+    <div class="metric-card navy">
+        <div class="metric-label">Portfolio Value</div>
+        <div class="metric-value">₦@Model.TotalValue<span style="font-size:1rem;font-weight:400;">M</span></div>
+        <div class="metric-sub">total purchase cost</div>
+    </div>
+    <div class="metric-card gold">
+        <div class="metric-label">Loaned Out</div>
+        <div class="metric-value">@Model.LoanedOut</div>
+        <div class="metric-sub">internal &amp; external loans</div>
+    </div>
+    <div class="metric-card warning">
+        <div class="metric-label">Pending Confirmations</div>
+        <div class="metric-value">@Model.PendingAssignmentConfirmations</div>
+        <div class="metric-sub">assignments awaiting receipt</div>
+    </div>
+    <div class="metric-card danger">
+        <div class="metric-label">Warranty Expiring</div>
+        <div class="metric-value">@Model.WarrantyExpiringSoon</div>
+        <div class="metric-sub">within next 3 months</div>
+    </div>
+</div>
+
+<!-- Action Items Banner -->
+@{
+    var hasActions = Model.PendingRepairRequests > 0 || Model.PendingAssetRequests > 0 || Model.PendingLoanRequests > 0 || Model.ExitAlerts > 0;
+}
+@if (hasActions)
+{
+    <div class="action-banner">
+        <strong>Action Required:</strong>
+        @if (Model.PendingRepairRequests > 0)
+        {
+            <a asp-controller="Workflow" asp-action="Repairs">@Model.PendingRepairRequests repair request@(Model.PendingRepairRequests != 1 ? "s" : "") pending review</a>
+        }
+        @if (Model.PendingAssetRequests > 0)
+        {
+            <span class="sep">·</span>
+            <a asp-controller="Workflow" asp-action="Requests">@Model.PendingAssetRequests asset request@(Model.PendingAssetRequests != 1 ? "s" : "") pending approval</a>
+        }
+        @if (Model.PendingLoanRequests > 0)
+        {
+            <span class="sep">·</span>
+            <a asp-controller="Workflow" asp-action="Loans">@Model.PendingLoanRequests loan request@(Model.PendingLoanRequests != 1 ? "s" : "") pending</a>
+        }
+        @if (Model.ExitAlerts > 0)
+        {
+            <span class="sep">·</span>
+            <a asp-controller="Workflow" asp-action="Rfid">@Model.ExitAlerts RFID alert@(Model.ExitAlerts != 1 ? "s" : "") flagged</a>
+        }
+    </div>
+}
+
+<div class="two-col-layout" style="margin-top:1.5rem;">
+    <!-- Asset Distribution by Category -->
+    <div class="info-card">
+        <div class="info-card-header">
+            <h3>Assets by Category</h3>
+            <a asp-controller="Reports" asp-action="Index" class="btn btn-sm btn-outline">Full Report</a>
+        </div>
+        <div class="bar-chart-list">
+            @{
+                var maxCat = Model.AssetsByCategory.Values.DefaultIfEmpty(1).Max();
+            }
+            @foreach (var kv in Model.AssetsByCategory.OrderByDescending(x => x.Value))
+            {
+                var pct = maxCat > 0 ? (int)(kv.Value * 100.0 / maxCat) : 0;
+                <div class="bar-chart-item">
+                    <span class="bar-label">@kv.Key</span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:@pct%"></div>
+                    </div>
+                    <span class="bar-count">@kv.Value</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Asset Distribution by Department -->
+    <div class="info-card">
+        <div class="info-card-header">
+            <h3>Assets by Department</h3>
+            <a asp-controller="Staff" asp-action="Index" class="btn btn-sm btn-outline">Staff List</a>
+        </div>
+        <div class="bar-chart-list">
+            @{
+                var maxDept = Model.AssetsByDepartment.Values.DefaultIfEmpty(1).Max();
+            }
+            @foreach (var kv in Model.AssetsByDepartment.OrderByDescending(x => x.Value))
+            {
+                var pct = maxDept > 0 ? (int)(kv.Value * 100.0 / maxDept) : 0;
+                <div class="bar-chart-item">
+                    <span class="bar-label">@kv.Key</span>
+                    <div class="bar-track">
+                        <div class="bar-fill gold" style="width:@pct%"></div>
+                    </div>
+                    <span class="bar-count">@kv.Value</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<h2 style="margin-top:2rem;margin-bottom:1rem;font-size:1.1rem;font-weight:600;color:#1d3461;border-bottom:2px solid #e8edf5;padding-bottom:0.5rem;">Quick Actions</h2>
 <div class="quick-links">
     <a asp-controller="Assets" asp-action="Index" class="quick-link-card">
-        <span class="icon">🏷️</span>
-        <span class="label">View Assets</span>
+        <div class="ql-icon" style="background:#e8f0fb;">🏷️</div>
+        <span class="label">Asset Register</span>
+    </a>
+    <a asp-controller="Assets" asp-action="Register" class="quick-link-card">
+        <div class="ql-icon" style="background:#e8f0fb;">➕</div>
+        <span class="label">Register Asset</span>
     </a>
     <a asp-controller="Assignments" asp-action="Index" class="quick-link-card">
-        <span class="icon">📋</span>
+        <div class="ql-icon" style="background:#fdf3e3;">📋</div>
         <span class="label">Assignments</span>
     </a>
     <a asp-controller="Workflow" asp-action="Requests" class="quick-link-card">
-        <span class="icon">📝</span>
-        <span class="label">Requests</span>
+        <div class="ql-icon" style="background:#e8f0fb;">📝</div>
+        <span class="label">Asset Requests</span>
     </a>
     <a asp-controller="Workflow" asp-action="Repairs" class="quick-link-card">
-        <span class="icon">🔧</span>
+        <div class="ql-icon" style="background:#fff0f0;">🔧</div>
         <span class="label">Repairs</span>
     </a>
     <a asp-controller="Workflow" asp-action="Loans" class="quick-link-card">
-        <span class="icon">🔄</span>
+        <div class="ql-icon" style="background:#fdf3e3;">🔄</div>
         <span class="label">Loans</span>
     </a>
     <a asp-controller="Workflow" asp-action="Rfid" class="quick-link-card">
-        <span class="icon">📡</span>
+        <div class="ql-icon" style="background:#fff0f0;">📡</div>
         <span class="label">RFID Monitor</span>
     </a>
     <a asp-controller="Audit" asp-action="Index" class="quick-link-card">
-        <span class="icon">🔍</span>
+        <div class="ql-icon" style="background:#f0fdf4;">🔍</div>
         <span class="label">Audit</span>
     </a>
-    <a asp-controller="Reports" asp-action="Index" class="quick-link-card">
-        <span class="icon">📈</span>
-        <span class="label">Reports</span>
+    <a asp-controller="Reports" asp-action="Depreciation" class="quick-link-card">
+        <div class="ql-icon" style="background:#fdf3e3;">📉</div>
+        <span class="label">Depreciation</span>
+    </a>
+    <a asp-controller="Reports" asp-action="Aging" class="quick-link-card">
+        <div class="ql-icon" style="background:#fdf3e3;">📊</div>
+        <span class="label">Aging Report</span>
+    </a>
+    <a asp-controller="Contractors" asp-action="Index" class="quick-link-card">
+        <div class="ql-icon" style="background:#f0fdf4;">🏗️</div>
+        <span class="label">Contractors</span>
+    </a>
+    <a asp-controller="Staff" asp-action="Index" class="quick-link-card">
+        <div class="ql-icon" style="background:#e8f0fb;">👥</div>
+        <span class="label">Staff Registry</span>
     </a>
 </div>
 
-<div class="info-card" style="background: linear-gradient(135deg, #f7f9ff 0%, #eef2ff 100%); border-color: #c8d4f0; border-left: 4px solid var(--navy);">
-    <strong>Welcome to the FRISL Enterprise Asset Management System</strong>
-    <p class="text-muted" style="margin:0.5rem 0 0;">
-        This system enables you to register assets, manage assignments, process repairs and loans, monitor RFID events, conduct audits, and generate comprehensive reports — all in one place.
-    </p>
+<!-- System Info -->
+<div class="info-card" style="margin-top:1.5rem;background:linear-gradient(135deg,#f7f9ff,#eef2ff);border-color:#c8d4f0;border-left:4px solid #1d3461;">
+    <div style="display:flex;justify-content:space-between;align-items:start;gap:1rem;">
+        <div>
+            <strong style="color:#1d3461;">FRISL Enterprise Asset Management System</strong>
+            <p class="text-muted" style="margin:0.4rem 0 0;">
+                Manage the full lifecycle of company assets — from registration and assignment through loans, repairs, audits and retirement. All activities are tracked and auditable.
+            </p>
+        </div>
+        <div style="text-align:right;white-space:nowrap;font-size:0.82rem;color:#666;">
+            <div>@Model.TotalStaff Staff Members</div>
+            <div>@Model.TotalDepartments Departments</div>
+        </div>
+    </div>
 </div>

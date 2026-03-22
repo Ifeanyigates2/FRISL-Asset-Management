@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<RepairContractor> RepairContractors => Set<RepairContractor>();
     public DbSet<Staff> Staff => Set<Staff>();
     public DbSet<RfidTag> RfidTags => Set<RfidTag>();
     public DbSet<AssetAssignment> AssetAssignments => Set<AssetAssignment>();
@@ -35,6 +36,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<AuditResult>().HasIndex(a => new { a.AuditSessionId, a.AssetId }).IsUnique();
         modelBuilder.Entity<ProcurementRecord>().HasIndex(p => p.ExternalReference);
         modelBuilder.Entity<IntegrationEventLog>().HasIndex(i => i.CreatedAt);
+        modelBuilder.Entity<Staff>().HasIndex(s => s.StaffId);
 
         base.OnModelCreating(modelBuilder);
     }

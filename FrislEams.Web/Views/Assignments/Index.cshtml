@@ -1,41 +1,124 @@
 @model List<AssetAssignment>
+@{
+    ViewData["Title"] = "Assignments";
+    var staff = ViewBag.Staff as List<Staff> ?? new();
+}
 
-<div class="flex-between">
-    <h1>Assignments</h1>
-    <a class="btn" asp-action="Create">New Assignment</a>
+<div class="page-header">
+    <div class="page-title">
+        <h1>Asset Assignments</h1>
+        <p class="page-subtitle">Two-leg confirmation model — initiate then confirm receipt</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">+ New Assignment</a>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Asset</th>
-            <th>Assigned To</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>Confirm</th>
-        </tr>
-    </thead>
-    <tbody>
-    @foreach (var item in Model)
-    {
-        <tr>
-            <td>@item.Asset?.TagCode</td>
-            <td>@item.AssignedToStaff?.FullName</td>
-            <td>@item.Status</td>
-            <td>@item.AssignedDate.ToLocalTime()</td>
-            <td>
-                @if (item.Status == "Pending")
+@{
+    var pending = Model.Where(a => a.Status == "Pending").ToList();
+    var confirmed = Model.Where(a => a.Status == "Confirmed").ToList();
+}
+
+@if (pending.Any())
+{
+    <div class="info-card" style="border-left:4px solid #e8a00e;margin-bottom:1.5rem;">
+        <h3 class="info-card-title" style="color:#856404;">⚠ Pending Confirmations (@pending.Count)</h3>
+        <p style="font-size:0.875rem;color:#856404;margin:0 0 1rem;">These assignments are awaiting receipt confirmation from the assignees.</p>
+        <div class="table-card" style="margin:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Assigned To</th>
+                        <th>Department</th>
+                        <th>Location</th>
+                        <th>Assigned Date</th>
+                        <th>Assigned By</th>
+                        <th>Confirm Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in pending)
                 {
-                    <form asp-action="Confirm" method="post" class="inline-form">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="AssignmentId" value="@item.Id" />
-                        <input name="ConfirmedByStaffId" placeholder="Staff Id" required />
-                        <input name="ConfirmedCondition" placeholder="Condition" value="Good" required />
-                        <button class="btn" type="submit">Confirm</button>
-                    </form>
+                    <tr>
+                        <td>
+                            <a asp-controller="Assets" asp-action="Detail" asp-route-id="@item.AssetId" class="tag-link">@item.Asset?.TagCode</a>
+                            <div style="font-size:0.8rem;color:#555;">@item.Asset?.AssetName</div>
+                        </td>
+                        <td>@(item.AssignedToStaff?.FullName ?? "—")</td>
+                        <td>@(item.AssignedToDepartment?.Name ?? "—")</td>
+                        <td>@(item.AssignedLocation?.Name ?? "—")</td>
+                        <td style="font-size:0.85rem;">@item.AssignedDate.ToString("dd MMM yyyy")</td>
+                        <td style="font-size:0.85rem;">@item.AssignedBy</td>
+                        <td>
+                            <form asp-action="Confirm" method="post" class="inline-confirm-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="AssignmentId" value="@item.Id" />
+                                <select name="ConfirmedByStaffId" class="form-control form-control-sm" required>
+                                    <option value="">Staff confirming...</option>
+                                    @foreach (var s in staff)
+                                    {
+                                        <option value="@s.Id">@s.FullName</option>
+                                    }
+                                </select>
+                                <select name="ConfirmedCondition" class="form-control form-control-sm">
+                                    <option value="Good">Good</option>
+                                    <option value="Fair">Fair</option>
+                                    <option value="Poor">Poor</option>
+                                </select>
+                                <button class="btn btn-primary btn-sm" type="submit">Confirm</button>
+                            </form>
+                        </td>
+                    </tr>
                 }
-            </td>
-        </tr>
-    }
-    </tbody>
-</table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="table-card">
+    <div class="table-header-bar">
+        <h3 style="font-size:1rem;font-weight:600;color:#1d3461;">All Assignments (@Model.Count)</h3>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Asset</th>
+                <th>Assigned To</th>
+                <th>Department</th>
+                <th>Location</th>
+                <th>Condition</th>
+                <th>Assigned Date</th>
+                <th>Status</th>
+                <th>Confirmed By</th>
+                <th>Confirm Date</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    <a asp-controller="Assets" asp-action="Detail" asp-route-id="@item.AssetId" class="tag-link">@item.Asset?.TagCode</a>
+                    <div style="font-size:0.8rem;color:#555;">@item.Asset?.AssetName</div>
+                </td>
+                <td>@(item.AssignedToStaff?.FullName ?? "Dept. Pool")</td>
+                <td>@(item.AssignedToDepartment?.Name ?? "—")</td>
+                <td>@(item.AssignedLocation?.Name ?? "—")</td>
+                <td>@item.AssignedCondition</td>
+                <td style="font-size:0.85rem;">@item.AssignedDate.ToString("dd MMM yyyy")</td>
+                <td>
+                    <span class="badge @(item.Status == "Confirmed" ? "badge-success" : "badge-warning")">
+                        @item.Status
+                    </span>
+                </td>
+                <td>@(item.ConfirmedByStaff?.FullName ?? "—")</td>
+                <td style="font-size:0.85rem;">@(item.ConfirmationDate?.ToString("dd MMM yyyy") ?? "—")</td>
+            </tr>
+        }
+        @if (!Model.Any())
+        {
+            <tr><td colspan="9" class="empty-state">No assignments recorded yet.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
