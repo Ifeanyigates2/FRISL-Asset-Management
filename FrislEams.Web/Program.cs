@@ -1,6 +1,7 @@
 using FrislEams.Web.Components;
 using FrislEams.Web.Data;
 using FrislEams.Web.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
